@@ -27,7 +27,6 @@ import {
 
 import {
   GEAR_ITEMS,
-  BADGE_DEFINITIONS,
   type AvatarId,
   type GearSlot,
 } from '@/config/character';
@@ -222,7 +221,7 @@ type GameContextValue = GameState & {
   setCharacterName: (name: string) => void;
   equipItem: (slot: GearSlot, itemId: string) => void;
   unequipItem: (slot: GearSlot) => void;
-  buyCosmetic: (cosmeticId: string) => boolean;
+  buyCosmetic: (cosmeticId: string, costSP: number) => boolean;
   equipCosmetic: (cosmeticId: string | null) => void;
   nameCompanion: (name: string) => void;
   completeOnboarding: (data: OnboardingData) => void;
@@ -257,6 +256,18 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setSoundEnabled(state.soundEnabled);
   }, [state.soundEnabled]);
+
+  // Life auto-regen: +1 life every 4 hours while app is open
+  useEffect(() => {
+    const REGEN_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
+    const id = setInterval(() => {
+      setState((s) => {
+        if (s.lives >= MAX_LIVES) return s;
+        return { ...s, lives: Math.min(MAX_LIVES, s.lives + 1) };
+      });
+    }, REGEN_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, []);
 
   // ── Derived values ──────────────────────────────────────
 
@@ -474,15 +485,13 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const buyCosmetic = useCallback((cosmeticId: string): boolean => {
-    // Validate badge exists
-    const def = BADGE_DEFINITIONS.find((b) => b.id === cosmeticId);
-    // Cosmetic items don't have badge defs — just check they're real items
+  const buyCosmetic = useCallback((cosmeticId: string, costSP: number): boolean => {
     const prev = stateRef.current;
     if (prev.ownedCosmetics.includes(cosmeticId)) return true; // already owned
-    if (def) return false; // this is a badge id, not a cosmetic
+    if (prev.studyPoints < costSP) return false; // insufficient SP
     setState((s) => ({
       ...s,
+      studyPoints: s.studyPoints - costSP,
       ownedCosmetics: [...s.ownedCosmetics, cosmeticId],
     }));
     return true;

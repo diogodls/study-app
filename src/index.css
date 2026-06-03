@@ -696,6 +696,11 @@ code, pre {
   100% { content: '...'; }
 }
 
+.loading-ellipsis::after {
+  content: '';
+  animation: ellipsis 1.5s steps(4, end) infinite;
+}
+
 /* ------------------------------------------------------------
    13. Animation Utility Classes
    ------------------------------------------------------------ */
