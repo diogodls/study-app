@@ -2280,3 +2280,327 @@ code, pre {
 .timer-expired-sub { font-size: 1rem; color: var(--text); }
 
 .timer-actions { width: 100%; }
+
+/* =============================================================
+   M7 — Onboarding Flow
+   ============================================================= */
+
+/* -- Shell ------------------------------------------------- */
+.onboarding-shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 1.5rem 1rem 2rem;
+  background: var(--bg-primary);
+  overflow-y: auto;
+}
+
+/* -- Dots -------------------------------------------------- */
+.onboarding-dots {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  margin-top: 0.5rem;
+}
+.onboarding-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--border);
+  transition: all 0.25s ease;
+}
+.onboarding-dot--active {
+  background: var(--accent);
+  width: 1.5rem;
+  border-radius: 0.25rem;
+}
+.onboarding-dot--done { background: hsl(25 90% 65% / 0.4); }
+
+/* -- Card wrapper ------------------------------------------ */
+.onboarding-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem 1.5rem 1.5rem;
+  animation: fadeInUp 0.3s ease;
+}
+
+/* -- Shared step layout ------------------------------------ */
+.onboarding-step {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.onboarding-step-title {
+  font-family: var(--font-heading);
+  font-size: 1.375rem;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0;
+}
+.onboarding-step-sub {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+.onboarding-actions {
+  display: flex;
+  gap: 0.625rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+/* Large button variant */
+.btn-lg {
+  padding: 0.875rem 2rem;
+  font-size: 1rem;
+}
+
+/* -- Step 1 — Welcome -------------------------------------- */
+.step-welcome {
+  align-items: center;
+  text-align: center;
+  padding: 0.5rem 0;
+}
+.onboarding-logo {
+  font-size: 4rem;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+  animation: float 3s ease-in-out infinite;
+}
+.onboarding-brand {
+  font-family: var(--font-heading);
+  font-size: 2.5rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--accent), hsl(280 80% 70%));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 0.375rem;
+}
+.onboarding-tagline {
+  font-size: 1.0625rem;
+  color: var(--text);
+  font-weight: 500;
+  line-height: 1.5;
+  margin: 0;
+}
+.onboarding-welcome-body {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.65;
+  margin: 0;
+  max-width: 340px;
+}
+
+/* -- Step 2 — Avatar grid ---------------------------------- */
+.avatar-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+.avatar-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--bg-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  position: relative;
+}
+.avatar-card:hover { border-color: var(--accent); background: hsl(25 90% 65% / 0.06); }
+.avatar-card--selected {
+  border-color: var(--accent);
+  background: hsl(25 90% 65% / 0.1);
+  animation: avatarBounce 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+.avatar-card__emoji { font-size: 2rem; flex-shrink: 0; line-height: 1; }
+.avatar-card__name {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.15rem;
+}
+.avatar-card__desc { display: block; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; }
+.avatar-card__check {
+  position: absolute;
+  right: 1rem;
+  font-size: 1rem;
+  color: var(--accent);
+  font-weight: 800;
+}
+
+@keyframes avatarBounce {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.04); }
+  60%  { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+
+/* -- Step 3 — Name ----------------------------------------- */
+.onboarding-name-wrap { display: flex; flex-direction: column; gap: 0.375rem; }
+.onboarding-name-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+.onboarding-name-input {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text);
+  font-size: 1rem;
+  font-family: inherit;
+  transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+.onboarding-name-input:focus { outline: none; border-color: var(--accent); }
+.onboarding-name-input--error { border-color: var(--error) !important; }
+.onboarding-name-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+}
+.onboarding-name-hint { color: var(--text-faint, var(--text-muted)); }
+.onboarding-name-error { color: var(--error); }
+.onboarding-name-count { color: var(--text-faint, var(--text-muted)); }
+
+/* -- Step 4 — API Key -------------------------------------- */
+.onboarding-apikey-wrap { display: flex; flex-direction: column; gap: 0.625rem; }
+.onboarding-apikey-row { display: flex; gap: 0.5rem; align-items: center; }
+.onboarding-apikey-row .onboarding-name-input { flex: 1; }
+.onboarding-test-msg { font-size: 0.8rem; margin: 0; }
+.onboarding-test-msg--ok   { color: var(--success); }
+.onboarding-test-msg--fail { color: var(--error); }
+.onboarding-note {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  background: hsl(0 0% 100% / 0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.625rem 0.875rem;
+  line-height: 1.5;
+}
+.onboarding-link { color: var(--accent); text-decoration: underline; }
+
+/* -- Step 5 — Path selection ------------------------------- */
+.path-selection-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+.path-selection-grid::-webkit-scrollbar { width: 3px; }
+.path-selection-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.path-select-card {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--bg-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+}
+.path-select-card:hover {
+  border-color: color-mix(in srgb, var(--path-color, var(--accent)) 60%, transparent);
+}
+.path-select-card--selected {
+  border-color: var(--path-color, var(--accent));
+  background: color-mix(in srgb, var(--path-color, var(--accent)) 8%, var(--bg-primary));
+}
+.path-select-card__icon { font-size: 1.5rem; flex-shrink: 0; }
+.path-select-card__body { flex: 1; min-width: 0; }
+.path-select-card__title {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.1rem;
+}
+.path-select-card__desc {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.path-select-card__nodes {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--text-faint, var(--text-muted));
+  margin-top: 0.1rem;
+}
+.path-select-card__check {
+  color: var(--path-color, var(--accent));
+  font-weight: 800;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* -- Step 6 — Companion ------------------------------------ */
+.step-companion { align-items: center; text-align: center; }
+.companion-egg-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+.companion-egg {
+  font-size: 5rem;
+  line-height: 1;
+  display: block;
+  animation: eggWiggle 2.5s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
+}
+.companion-egg-glow {
+  position: absolute;
+  width: 6rem;
+  height: 6rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, hsl(280 80% 70% / 0.3) 0%, transparent 70%);
+  animation: eggGlowPulse 2.5s ease-in-out infinite;
+}
+@keyframes eggWiggle {
+  0%, 100% { transform: rotate(0deg); }
+  20%       { transform: rotate(-6deg); }
+  40%       { transform: rotate(6deg); }
+  60%       { transform: rotate(-4deg); }
+  80%       { transform: rotate(4deg); }
+}
+@keyframes eggGlowPulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.2); }
+}
+
+.companion-evolution-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.625rem 1rem;
+  font-size: 1.5rem;
+}
+.evolution-arrow { font-size: 0.75rem; color: var(--text-muted); }

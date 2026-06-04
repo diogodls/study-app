@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useGameState } from '@/context/GameStateContext';
 import { LEARNING_PATHS, isNodeUnlocked } from '@/config/paths';
 import type { SkillNode, LearningPath } from '@/types';
@@ -99,8 +99,14 @@ function PathTab({
 export default function SkillTreePage() {
   const { completedNodes, lives } = useGameState();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [selectedPathId, setSelectedPathId] = useState(LEARNING_PATHS[0].id);
+  // Honour startingPathId passed from OnboardingFlow via router state
+  const initialPathId =
+    (location.state as { startingPathId?: string } | null)?.startingPathId ??
+    LEARNING_PATHS[0].id;
+
+  const [selectedPathId, setSelectedPathId] = useState(initialPathId);
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
 
   const path = LEARNING_PATHS.find((p) => p.id === selectedPathId)!;
