@@ -1899,3 +1899,384 @@ code, pre {
   color: hsl(0 80% 80%);
   border: 1px solid hsl(0 80% 60% / 0.35);
 }
+
+/* =============================================================
+   M6 — Shop & Dopamine Timer
+   ============================================================= */
+
+/* -- Shop tabs --------------------------------------------- */
+.shop-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1.25rem;
+}
+.shop-tab {
+  flex: 1;
+  padding: 0.75rem;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+.shop-tab--active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.shop-tab:hover:not(.shop-tab--active) { color: var(--text); }
+
+.tab-content { display: flex; flex-direction: column; gap: 1rem; }
+
+/* -- SP balance card --------------------------------------- */
+.sp-balance-card {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 1rem 1.25rem;
+  background: hsl(45 90% 55% / 0.1);
+  border: 1px solid hsl(45 90% 55% / 0.3);
+  border-radius: var(--radius);
+}
+.sp-balance-icon { font-size: 2rem; }
+.sp-balance-amount {
+  display: block;
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: hsl(45 90% 70%);
+  line-height: 1;
+}
+.sp-balance-label { font-size: 0.75rem; color: var(--text-muted); }
+
+.sp-inline-balance {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  padding: 0.5rem 0;
+}
+.sp-inline-balance strong { color: hsl(45 90% 70%); }
+
+/* -- Reward grid ------------------------------------------- */
+.reward-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+.reward-card {
+  padding: 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: border-color 0.2s;
+}
+.reward-card:hover:not(.reward-card--locked) {
+  border-color: var(--accent);
+}
+.reward-card--locked { opacity: 0.6; }
+
+.reward-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+.reward-card__name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--text);
+}
+.reward-card__delete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.2rem;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+  line-height: 1;
+}
+.reward-card__delete:hover { opacity: 1; }
+
+.reward-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 0.5rem;
+}
+.type-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 2rem;
+}
+.type-badge--once { background: hsl(260 60% 60% / 0.2); color: hsl(260 60% 80%); }
+.type-badge--time { background: hsl(200 70% 60% / 0.2); color: hsl(200 70% 80%); }
+.reward-card__cost { font-size: 0.8rem; color: hsl(45 90% 65%); font-weight: 600; }
+
+/* -- Shop empty state -------------------------------------- */
+.shop-empty {
+  text-align: center;
+  padding: 2.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.shop-empty span { font-size: 2.5rem; }
+
+/* -- Add reward form --------------------------------------- */
+.form-group { display: flex; flex-direction: column; gap: 0.375rem; }
+.form-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+.form-input {
+  padding: 0.625rem 0.875rem;
+  background: var(--bg-primary);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.875rem;
+  font-family: inherit;
+  transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+.form-input:focus { outline: none; border-color: var(--accent); }
+.form-input--error { border-color: var(--error) !important; }
+.form-error { font-size: 0.75rem; color: var(--error); }
+
+.type-toggle { display: flex; gap: 0.5rem; }
+.type-toggle__btn {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.type-toggle__btn--active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: hsl(25 90% 65% / 0.1);
+}
+
+/* -- Cosmetics --------------------------------------------- */
+.cosmetics-preview-wrap {
+  margin-bottom: 0.25rem;
+}
+.cosmetics-preview-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+/* Character card preview */
+.character-card-preview {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: all 0.3s;
+}
+.char-avatar-wrap { position: relative; }
+.char-avatar {
+  font-size: 2.5rem;
+  width: 3.5rem;
+  height: 3.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  border-radius: 50%;
+  border: 2px solid var(--border);
+}
+.char-tier-badge {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  font-size: 0.55rem;
+  font-weight: 800;
+  padding: 0.1rem 0.3rem;
+  background: var(--accent);
+  color: #000;
+  border-radius: 2rem;
+}
+.char-info { flex: 1; }
+.char-name { display: block; font-weight: 700; font-size: 0.9375rem; color: var(--text); }
+.char-level { display: block; font-size: 0.75rem; color: var(--text-muted); }
+.char-companion { display: block; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.1rem; }
+.char-gear { display: flex; gap: 0.25rem; }
+.gear-badge { font-size: 1rem; }
+
+/* Cosmetic sections */
+.cosmetic-section { margin-bottom: 0.5rem; }
+.cosmetic-section-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 0.625rem;
+}
+.cosmetic-grid { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.cosmetic-card {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.15s;
+}
+.cosmetic-card--equipped {
+  border-color: var(--accent);
+  background: hsl(25 90% 65% / 0.06);
+}
+.cosmetic-card__preview { font-size: 1.75rem; flex-shrink: 0; }
+.cosmetic-card__info { flex: 1; min-width: 0; }
+.cosmetic-card__name { display: block; font-size: 0.875rem; font-weight: 600; color: var(--text); }
+.cosmetic-card__desc { display: block; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; }
+
+/* Cosmetic effects */
+.cosmetic-theme-crimson  { border-color: hsl(340 80% 55%) !important; background: hsl(340 80% 55% / 0.08) !important; }
+.cosmetic-theme-forest   { border-color: hsl(140 50% 45%) !important; background: hsl(140 50% 45% / 0.08) !important; }
+.cosmetic-theme-ocean    { border-color: hsl(200 80% 50%) !important; background: hsl(200 80% 50% / 0.08) !important; }
+.cosmetic-theme-golden   { border-color: hsl(45 90% 55%)  !important; background: hsl(45 90% 55% / 0.1)   !important; }
+.cosmetic-frame-pulse    { animation: framePulse 2s ease-in-out infinite; border-color: hsl(270 70% 65%) !important; }
+.cosmetic-frame-legendary { animation: legendaryGlow 1.5s ease-in-out infinite; border-color: hsl(45 90% 55%) !important; }
+
+@keyframes framePulse {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(270 70% 65% / 0.4); }
+  50%       { box-shadow: 0 0 0 8px hsl(270 70% 65% / 0); }
+}
+@keyframes legendaryGlow {
+  0%, 100% { box-shadow: 0 0 12px hsl(45 90% 55% / 0.6); }
+  50%       { box-shadow: 0 0 24px hsl(45 90% 55% / 0.9); }
+}
+
+/* -- Dopamine Timer overlay -------------------------------- */
+.timer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: hsl(0 0% 0% / 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  animation: fadeInOverlay 0.3s ease;
+}
+
+.timer-card {
+  width: 100%;
+  max-width: 340px;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 1.5rem 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  animation: slideUpModal 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.timer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+.timer-reward-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 80%;
+}
+.timer-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+.timer-close-btn:hover { opacity: 1; }
+
+/* SVG ring */
+.timer-ring-wrapper {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: filter 0.5s;
+}
+.timer-ring-wrapper--low {
+  filter: drop-shadow(0 0 12px hsl(0 80% 60% / 0.6));
+}
+.timer-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.timer-ring__track {
+  fill: none;
+  stroke: var(--bg-primary);
+  stroke-width: 8;
+}
+.timer-ring__fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke 0.5s;
+}
+.timer-ring-wrapper--low .timer-ring__fill { stroke: hsl(0 80% 65%); }
+
+.timer-time {
+  font-family: var(--font-heading);
+  font-size: 2.75rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: 0.02em;
+  z-index: 1;
+}
+
+/* Status text */
+.timer-status { text-align: center; }
+.timer-running-title, .timer-paused-title, .timer-expired-title {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  margin: 0 0 0.3rem;
+}
+.timer-expired-title { color: var(--accent); }
+.timer-paused-title  { color: var(--text-muted); }
+.timer-sub, .timer-expired-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+.timer-expired-sub { font-size: 1rem; color: var(--text); }
+
+.timer-actions { width: 100%; }
