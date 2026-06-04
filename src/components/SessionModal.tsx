@@ -37,6 +37,7 @@ interface VictoryData {
   xpResult: AddXpResult;
   nodeResult: CompleteNodeResult | null;
   isPerfect: boolean;
+  lifeRecovered: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -326,36 +327,63 @@ function VictoryView({
   victory,
   nodeTitle,
   onClose,
+  onRetryRecovery,
 }: {
   victory: VictoryData;
   nodeTitle: string;
   onClose: () => void;
+  onRetryRecovery?: () => void;
 }) {
   useEffect(() => {
-    confetti({ particleCount: 120, spread: 80, origin: { y: 0.5 } });
+    if (victory.lifeRecovered || victory.xpResult.leveledUp) {
+      confetti({ particleCount: 120, spread: 80, origin: { y: 0.5 } });
+    } else {
+      confetti({ particleCount: 40, spread: 60, origin: { y: 0.5 }, colors: ['#9B97B0'] });
+    }
     if (victory.xpResult.leveledUp) playLevelUp();
     else playCoins();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const isFailedRecovery = onRetryRecovery && !victory.lifeRecovered;
+
   return (
     <div className="modal-content victory-screen">
-      <div className="victory-emoji" aria-hidden="true">🏆</div>
-      <h2 className="victory-title">Lesson Complete!</h2>
+      <div className="victory-emoji" aria-hidden="true">
+        {victory.lifeRecovered ? '❤️' : isFailedRecovery ? '💔' : '🏆'}
+      </div>
+      <h2 className="victory-title">
+        {victory.lifeRecovered
+          ? 'Life Recovered!'
+          : isFailedRecovery
+          ? 'No life recovered'
+          : 'Session Complete!'}
+      </h2>
       <p className="victory-node">{nodeTitle}</p>
 
-      <div className="victory-rewards">
-        <div className="reward-chip reward-chip--xp">
-          <span>⚡ +{victory.xpGained} XP</span>
+      {isFailedRecovery ? (
+        <div className="recovery-fail-msg">
+          You had wrong answers — a perfect run is required to recover a life. Try a different topic!
         </div>
-        <div className="reward-chip reward-chip--sp">
-          <span>💰 +{victory.spGained} SP</span>
-        </div>
-        {victory.isPerfect && (
-          <div className="reward-chip reward-chip--perfect">
-            <span>⭐ Perfect!</span>
+      ) : (
+        <div className="victory-rewards">
+          <div className="reward-chip reward-chip--xp">
+            <span>⚡ +{victory.xpGained} XP</span>
           </div>
-        )}
-      </div>
+          <div className="reward-chip reward-chip--sp">
+            <span>💰 +{victory.spGained} SP</span>
+          </div>
+          {victory.lifeRecovered && (
+            <div className="reward-chip reward-chip--life">
+              <span>❤️ +1 Life</span>
+            </div>
+          )}
+          {victory.isPerfect && !victory.lifeRecovered && (
+            <div className="reward-chip reward-chip--perfect">
+              <span>⭐ Perfect!</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {victory.xpResult.leveledUp && (
         <div className="victory-levelup">
@@ -376,9 +404,16 @@ function VictoryView({
         </div>
       )}
 
-      <button id="back-to-map-btn" className="btn btn-primary btn-3d" onClick={onClose}>
-        Back to Skill Tree →
-      </button>
+      <div className="modal-actions" style={{ justifyContent: 'center' }}>
+        {isFailedRecovery && (
+          <button id="retry-recovery-btn" className="btn btn-ghost" onClick={onRetryRecovery}>
+            Try a different topic
+          </button>
+        )}
+        <button id="back-to-map-btn" className="btn btn-primary btn-3d" onClick={onClose}>
+          {onRetryRecovery ? 'Close' : 'Back to Skill Tree →'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -388,19 +423,23 @@ function VictoryView({
 // ─────────────────────────────────────────────────────────────
 
 interface SessionModalProps {
-  nodeId: string;
-  pathId: string;
+  nodeId?: string;           // omit for free-practice sessions
+  pathId?: string;
+  practiceQuestion?: string; // free-form topic — overrides node.geminiTopic
   onClose: () => void;
-  practiceMode?: boolean;   // no completeNode, no lab, 3 quizzes
-  recoveryMode?: boolean;   // practiceMode + gainLife on success
+  practiceMode?: boolean;    // no completeNode, no lab, 3 quizzes
+  recoveryMode?: boolean;    // practiceMode + gainLife only on perfect
+  onRetryRecovery?: () => void; // shown on failed recovery
 }
 
 export default function SessionModal({
   nodeId,
   pathId: _pathId,
+  practiceQuestion,
   onClose,
   practiceMode = false,
   recoveryMode = false,
+  onRetryRecovery,
 }: SessionModalProps) {
   const {
     geminiApiKey,
@@ -415,8 +454,8 @@ export default function SessionModal({
     incrementLifeRecoveries,
   } = useGameState();
 
-  const node = getNode(nodeId);
-  const alreadyCompleted = completedNodes.includes(nodeId);
+  const node = nodeId ? getNode(nodeId) : null;
+  const alreadyCompleted = nodeId ? completedNodes.includes(nodeId) : false;
 
   const [view, setView] = useState<ModalView>('loading');
   const [session, setSession] = useState<CheatSheetSession | null>(null);
@@ -432,12 +471,14 @@ export default function SessionModal({
 
   // Load lesson on mount
   useEffect(() => {
-    if (loadedRef.current || !node) return;
+    if (loadedRef.current) return;
+    const topic = practiceQuestion ?? node?.geminiTopic;
+    if (!topic) return;
     loadedRef.current = true;
 
     const loader = practiceMode || recoveryMode
-      ? generatePracticeSession(node.geminiTopic, geminiApiKey, selectedModel)
-      : generateLesson(node.geminiTopic, geminiApiKey, selectedModel);
+      ? generatePracticeSession(topic, geminiApiKey, selectedModel)
+      : generateLesson(topic, geminiApiKey, selectedModel);
 
     loader
       .then((s) => {
@@ -448,7 +489,7 @@ export default function SessionModal({
         setError(err);
         setView('error');
       });
-  }, [node, geminiApiKey, selectedModel, practiceMode, recoveryMode]);
+  }, [node, practiceQuestion, geminiApiKey, selectedModel, practiceMode, recoveryMode]);
 
   // Lock body scroll while modal is open
   useEffect(() => {
@@ -507,16 +548,18 @@ export default function SessionModal({
       const xpResult = addXp(xpGained);
       addStudyPoints(spGained);
       let nodeResult: CompleteNodeResult | null = null;
-      if (!practiceMode && !recoveryMode && !alreadyCompleted) {
+      if (!practiceMode && !recoveryMode && !alreadyCompleted && nodeId) {
         nodeResult = completeNode(nodeId);
       }
       if (isPerfect) incrementPerfectLessons();
-      if (recoveryMode) {
+      // Recovery: only grant life on a perfect run
+      const lifeRecovered = recoveryMode && isPerfect;
+      if (lifeRecovered) {
         gainLife();
         incrementLifeRecoveries();
       }
 
-      setVictory({ xpGained, spGained, xpResult, nodeResult, isPerfect });
+      setVictory({ xpGained, spGained, xpResult, nodeResult, isPerfect, lifeRecovered });
       setView('victory');
     } else {
       setQuizState((s) => ({
@@ -533,7 +576,7 @@ export default function SessionModal({
     const spGained = SP_REWARDS.CODING_LAB_COMPLETE;
     const xpResult = addXp(xpGained);
     addStudyPoints(spGained);
-    setVictory({ xpGained, spGained, xpResult, nodeResult: null, isPerfect: false });
+    setVictory({ xpGained, spGained, xpResult, nodeResult: null, isPerfect: false, lifeRecovered: false });
     setView('victory');
   }, [addXp, addStudyPoints]);
 
@@ -542,18 +585,19 @@ export default function SessionModal({
     if (e.target === e.currentTarget) onClose();
   }, [onClose]);
 
-  if (!node) return null;
+  // Require either a node or a free-form question
+  if (!node && !practiceQuestion) return null;
 
   return (
-    <div className="modal-overlay" onClick={handleBackdropClick} role="dialog" aria-modal="true" aria-label={node.title}>
+    <div className="modal-overlay" onClick={handleBackdropClick} role="dialog" aria-modal="true" aria-label={node?.title ?? session?.title ?? 'Practice Session'}>
       <div className="modal">
         {/* Header */}
         <div className="modal-header">
           <div className="modal-header__left">
-            <span className="modal-node-icon">{node.icon}</span>
+            {node && <span className="modal-node-icon">{node.icon}</span>}
             <div>
-              <h2 className="modal-title">{session?.title ?? node.title}</h2>
-              <span className="modal-subtitle">~{node.estimatedMinutes} min</span>
+              <h2 className="modal-title">{session?.title ?? node?.title ?? 'Practice Session'}</h2>
+              {node && <span className="modal-subtitle">~{node.estimatedMinutes} min</span>}
             </div>
           </div>
           <button
@@ -606,8 +650,9 @@ export default function SessionModal({
           {view === 'victory' && victory && (
             <VictoryView
               victory={victory}
-              nodeTitle={node.title}
+              nodeTitle={node?.title ?? session?.title ?? 'Practice Session'}
               onClose={onClose}
+              onRetryRecovery={recoveryMode ? onRetryRecovery : undefined}
             />
           )}
         </div>

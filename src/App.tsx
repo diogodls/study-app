@@ -5,19 +5,7 @@ import SettingsPage from '@/pages/SettingsPage';
 import ProfilePage from '@/pages/ProfilePage';
 
 import SkillTreePage from '@/pages/SkillTreePage';
-function PracticePage() {
-  document.title = 'Practice Arena — DevQuest';
-  return (
-    <div className="page">
-      <div className="card" style={{ textAlign: 'center', padding: '2.5rem 1.5rem' }}>
-        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚔️</div>
-        <h2 style={{ fontFamily: 'var(--font-heading)', marginBottom: '0.5rem' }}>Practice Arena</h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.9375rem' }}>Coming in Milestone 5 — Free practice</p>
-      </div>
-    </div>
-  );
-}
-
+import PracticePage from '@/pages/PracticePage';
 function ShopPage() {
   document.title = 'Reward Shop — DevQuest';
   return (
