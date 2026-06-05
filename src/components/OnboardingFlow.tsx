@@ -9,10 +9,11 @@
 import { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameState } from '@/context/GameStateContext';
-import { AVATARS } from '@/config/character';
+import { AVATARS, COMPANIONS } from '@/config/character';
 import { LEARNING_PATHS } from '@/config/paths';
 import { generateLesson } from '@/services/geminiService';
-import type { AvatarId } from '@/types';
+import type { AvatarId, CompanionSpecies } from '@/types';
+import { AvatarSprite, CompanionDisplay } from '@/components/PixelSprites';
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -87,7 +88,9 @@ function StepAvatar({
             className={`avatar-card${selected === av.id ? ' avatar-card--selected' : ''}`}
             onClick={() => onSelect(av.id)}
           >
-            <span className="avatar-card__emoji">{av.emoji}</span>
+            <span className="avatar-card__sprite">
+              <AvatarSprite avatarId={av.id} tier={1} />
+            </span>
             <span className="avatar-card__name">{av.name}</span>
             <span className="avatar-card__desc">{av.description}</span>
             {selected === av.id && <span className="avatar-card__check">✓</span>}
@@ -331,7 +334,7 @@ function StepPath({
 // Step 6 — Meet Companion
 // ─────────────────────────────────────────────────────────────
 
-function StepCompanion({ onFinish, onBack }: { onFinish: () => void; onBack: () => void }) {
+function LegacyStepCompanion({ onFinish, onBack }: { onFinish: () => void; onBack: () => void }) {
   return (
     <div className="onboarding-step step-companion">
       <div className="companion-egg-wrap">
@@ -362,6 +365,95 @@ function StepCompanion({ onFinish, onBack }: { onFinish: () => void; onBack: () 
   );
 }
 
+void LegacyStepCompanion;
+
+function PreviousStepCompanion({ onFinish, onBack }: { onFinish: () => void; onBack: () => void }) {
+  return (
+    <div className="onboarding-step step-companion">
+      <div className="companion-egg-wrap">
+        <CompanionDisplay stage={0} streak={1} compact />
+        <div className="companion-egg-glow" />
+      </div>
+      <h2 className="onboarding-step-title">Meet your companion</h2>
+      <p className="onboarding-step-sub">
+        Your companion will grow as you learn.<br />
+        Study every day to watch it evolve!
+      </p>
+      <div className="companion-evolution-preview">
+        <CompanionDisplay stage={0} streak={1} compact />
+        <span className="evolution-arrow">→</span>
+        <CompanionDisplay stage={1} streak={1} compact />
+        <span className="evolution-arrow">→</span>
+        <CompanionDisplay stage={2} streak={1} compact />
+        <span className="evolution-arrow">→</span>
+        <CompanionDisplay stage={3} streak={1} compact />
+      </div>
+      <button id="finish-onboarding-btn" className="btn btn-primary btn-3d btn-lg" onClick={onFinish}>
+        Let&apos;s go! →
+      </button>
+      <button className="btn btn-ghost btn-sm" onClick={onBack} style={{ marginTop: '0.5rem' }}>
+        ← Back
+      </button>
+    </div>
+  );
+}
+
+void PreviousStepCompanion;
+
+function StepCompanion({
+  selected,
+  onSelect,
+  onFinish,
+  onBack,
+}: {
+  selected: CompanionSpecies;
+  onSelect: (id: CompanionSpecies) => void;
+  onFinish: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <div className="onboarding-step step-companion">
+      <div className="companion-egg-wrap">
+        <CompanionDisplay stage={0} species={selected} streak={1} compact />
+        <div className="companion-egg-glow" />
+      </div>
+      <h2 className="onboarding-step-title">Meet your companion</h2>
+      <p className="onboarding-step-sub">
+        Choose the pet that will grow with your study streak.
+      </p>
+      <div className="companion-evolution-preview">
+        <CompanionDisplay stage={0} species={selected} streak={1} compact />
+        <span className="evolution-arrow">→</span>
+        <CompanionDisplay stage={1} species={selected} streak={1} compact />
+        <span className="evolution-arrow">→</span>
+        <CompanionDisplay stage={2} species={selected} streak={1} compact />
+        <span className="evolution-arrow">→</span>
+        <CompanionDisplay stage={3} species={selected} streak={1} compact />
+      </div>
+      <div className="companion-picker companion-picker--onboarding" aria-label="Choose starter companion">
+        {COMPANIONS.map((pet) => (
+          <button
+            key={pet.id}
+            id={`starter-companion-${pet.id}`}
+            className={`companion-picker__option${selected === pet.id ? ' companion-picker__option--active' : ''}`}
+            onClick={() => onSelect(pet.id)}
+            title={pet.description}
+          >
+            <CompanionDisplay stage={1} species={pet.id} streak={1} compact />
+            <span>{pet.name}</span>
+          </button>
+        ))}
+      </div>
+      <button id="finish-onboarding-btn" className="btn btn-primary btn-3d btn-lg" onClick={onFinish}>
+        Let&apos;s go! →
+      </button>
+      <button className="btn btn-ghost btn-sm" onClick={onBack} style={{ marginTop: '0.5rem' }}>
+        ← Back
+      </button>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────
 // Main OnboardingFlow
 // ─────────────────────────────────────────────────────────────
@@ -375,6 +467,7 @@ export default function OnboardingFlow() {
   const [heroName, setHeroName] = useState('');
   const [apiKey, setLocalApiKey] = useState('');
   const [pathId, setPathId] = useState<string | null>(null);
+  const [companionSpecies, setCompanionSpecies] = useState<CompanionSpecies>('spark');
 
   // Prevent double-submit on finish
   const finishing = useRef(false);
@@ -390,12 +483,13 @@ export default function OnboardingFlow() {
       avatarId: avatarId ?? 'hooded-coder',
       characterName: heroName.trim() || 'Hero',
       startingPathId: pathId ?? LEARNING_PATHS[0].id,
+      companionSpecies,
       geminiApiKey: apiKey.trim() || undefined,
     });
 
     // Navigate to skill tree with starting path state
     navigate('/', { state: { startingPathId: pathId ?? LEARNING_PATHS[0].id } });
-  }, [avatarId, heroName, apiKey, pathId, completeOnboarding, setApiKey, navigate]);
+  }, [avatarId, heroName, apiKey, pathId, companionSpecies, completeOnboarding, navigate]);
 
   return (
     <div className="onboarding-shell">
@@ -438,6 +532,8 @@ export default function OnboardingFlow() {
         )}
         {step === 6 && (
           <StepCompanion
+            selected={companionSpecies}
+            onSelect={setCompanionSpecies}
             onFinish={handleFinish}
             onBack={back}
           />

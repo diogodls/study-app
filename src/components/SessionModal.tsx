@@ -7,6 +7,7 @@ import confetti from 'canvas-confetti';
 import { useGameState } from '@/context/GameStateContext';
 import { getNode } from '@/config/paths';
 import { XP_REWARDS, SP_REWARDS } from '@/config/levels';
+import { getCompanionSpeciesStageLabel, getGearItem } from '@/config/character';
 import {
   generateLesson,
   generateCodingLab,
@@ -15,6 +16,7 @@ import {
 import { playCorrect, playWrong, playLevelUp, playCoins } from '@/services/soundService';
 import GeminiLoadingState from '@/components/GeminiLoadingState';
 import GeminiErrorCard from '@/components/GeminiErrorCard';
+import { AvatarSprite, CompanionDisplay } from '@/components/PixelSprites';
 import type { CheatSheetSession, CodingLab, AddXpResult, CompleteNodeResult } from '@/types';
 
 // ─────────────────────────────────────────────────────────────
@@ -74,10 +76,12 @@ function CheatSheetView({
   session,
   onStartQuiz,
   onOpenLab,
+  showLab = true,
 }: {
   session: CheatSheetSession;
   onStartQuiz: () => void;
   onOpenLab: () => void;
+  showLab?: boolean;
 }) {
   return (
     <div className="modal-content">
@@ -85,7 +89,7 @@ function CheatSheetView({
         <ReactMarkdown components={mdComponents}>{session.cheatSheet}</ReactMarkdown>
       </div>
       <div className="modal-actions">
-        <button id="open-lab-btn" className="btn btn-ghost" onClick={onOpenLab}>
+        <button id="open-lab-btn" className="btn btn-ghost" onClick={onOpenLab} hidden={!showLab}>
           🧪 Coding Lab
         </button>
         <button id="start-quiz-btn" className="btn btn-primary btn-3d" onClick={onStartQuiz}>
@@ -323,7 +327,7 @@ function CodingLabView({
   );
 }
 
-function VictoryView({
+function LegacyVictoryView({
   victory,
   nodeTitle,
   onClose,
@@ -418,6 +422,104 @@ function VictoryView({
   );
 }
 
+void LegacyVictoryView;
+
+function VictoryView({
+  victory,
+  nodeTitle,
+  onClose,
+  onRetryRecovery,
+}: {
+  victory: VictoryData;
+  nodeTitle: string;
+  onClose: () => void;
+  onRetryRecovery?: () => void;
+}) {
+  const { avatarId, equippedItems, companion, streak } = useGameState();
+
+  useEffect(() => {
+    if (victory.lifeRecovered || victory.xpResult.leveledUp) {
+      confetti({ particleCount: 120, spread: 80, origin: { y: 0.5 } });
+    } else {
+      confetti({ particleCount: 40, spread: 60, origin: { y: 0.5 }, colors: ['#9B97B0'] });
+    }
+    if (victory.xpResult.leveledUp) playLevelUp();
+    else playCoins();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const isFailedRecovery = onRetryRecovery && !victory.lifeRecovered;
+  const unlockedGear = victory.nodeResult?.newlyUnlockedGear
+    .map((id) => getGearItem(id))
+    .filter((item): item is NonNullable<typeof item> => Boolean(item)) ?? [];
+
+  return (
+    <div className="modal-content victory-screen">
+      <div className="victory-emoji" aria-hidden="true">
+        {victory.lifeRecovered ? '♥' : isFailedRecovery ? '×' : '🏆'}
+      </div>
+      <h2 className="victory-title">
+        {victory.lifeRecovered ? 'Life Recovered!' : isFailedRecovery ? 'No life recovered' : 'Session Complete!'}
+      </h2>
+      <p className="victory-node">{nodeTitle}</p>
+
+      {isFailedRecovery ? (
+        <div className="recovery-fail-msg">
+          You had wrong answers. A perfect run is required to recover a life. Try a different topic!
+        </div>
+      ) : (
+        <div className="victory-rewards">
+          <div className="reward-chip reward-chip--xp"><span>⚡ +{victory.xpGained} XP</span></div>
+          <div className="reward-chip reward-chip--sp"><span>💰 +{victory.spGained} SP</span></div>
+          {victory.lifeRecovered && <div className="reward-chip reward-chip--life"><span>♥ +1 Life</span></div>}
+          {victory.isPerfect && !victory.lifeRecovered && <div className="reward-chip reward-chip--perfect"><span>★ Perfect!</span></div>}
+        </div>
+      )}
+
+      {victory.xpResult.leveledUp && (
+        <div className="victory-levelup">
+          <span>Level Up! You&apos;re now Level {victory.xpResult.newLevel}</span>
+          {victory.xpResult.tierChanged && (
+            <div className="victory-avatar-flash">
+              <AvatarSprite avatarId={avatarId} tier={victory.xpResult.newTier} equippedItems={equippedItems} />
+              <strong>Avatar evolved to Tier {victory.xpResult.newTier}</strong>
+            </div>
+          )}
+        </div>
+      )}
+
+      {victory.xpResult.companionEvolved && (
+        <div className="victory-companion">
+          <CompanionDisplay stage={victory.xpResult.newCompanionStage} species={companion.species} name={companion.name} streak={streak} compact />
+          <span>Your companion evolved into {getCompanionSpeciesStageLabel(companion.species, victory.xpResult.newCompanionStage)}!</span>
+        </div>
+      )}
+
+      {unlockedGear.length > 0 && (
+        <div className="victory-gear">
+          {unlockedGear.map((item) => (
+            <div key={item.id} className={`victory-gear-card victory-gear-card--${item.rarity}`}>
+              <span className="victory-gear-card__art">{item.emoji}</span>
+              <span className="victory-gear-card__name">{item.name}</span>
+              <span className="victory-gear-card__flavor">{item.flavorText}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="modal-actions" style={{ justifyContent: 'center' }}>
+        {isFailedRecovery && (
+          <button id="retry-recovery-btn" className="btn btn-ghost" onClick={onRetryRecovery}>
+            Try a different topic
+          </button>
+        )}
+        <button id="back-to-map-btn" className="btn btn-primary btn-3d" onClick={onClose}>
+          {onRetryRecovery ? 'Close' : 'Back to Skill Tree →'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────
 // Main SessionModal
 // ─────────────────────────────────────────────────────────────
@@ -434,7 +536,6 @@ interface SessionModalProps {
 
 export default function SessionModal({
   nodeId,
-  pathId: _pathId,
   practiceQuestion,
   onClose,
   practiceMode = false,
@@ -623,6 +724,7 @@ export default function SessionModal({
               session={session}
               onStartQuiz={handleStartQuiz}
               onOpenLab={() => setView('lab')}
+              showLab={!practiceMode && !recoveryMode && Boolean(node && nodeId)}
             />
           )}
 
@@ -636,7 +738,7 @@ export default function SessionModal({
             />
           )}
 
-          {view === 'lab' && (
+          {view === 'lab' && node && nodeId && (
             <CodingLabView
               nodeId={nodeId}
               apiKey={geminiApiKey}

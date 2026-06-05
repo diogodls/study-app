@@ -10,12 +10,11 @@ import { useGameState } from '@/context/GameStateContext';
 import {
   COSMETIC_ITEMS,
   getCosmeticsByType,
-  getAvatar,
-  getCompanionEmoji,
 } from '@/config/character';
 import type { Reward, CosmeticType } from '@/types';
 import { playCoins } from '@/services/soundService';
 import DopamineTimer from '@/components/DopamineTimer';
+import { AvatarSprite, CompanionDisplay } from '@/components/PixelSprites';
 
 document.title = 'Reward Shop — DevQuest';
 
@@ -25,21 +24,23 @@ document.title = 'Reward Shop — DevQuest';
 
 function CharacterCard() {
   const { characterName, avatarId, avatarTier, equippedItems, equippedCosmetic, companion, level } = useGameState();
-  const avatar = getAvatar(avatarId);
-  const companionEmoji = getCompanionEmoji(companion.evolutionStage);
   const cosmeticClass = equippedCosmetic ? (COSMETIC_ITEMS.find(c => c.id === equippedCosmetic)?.cssClass ?? '') : '';
 
   return (
     <div className={`character-card-preview ${cosmeticClass}`}>
       <div className="char-avatar-wrap">
-        <div className="char-avatar">{avatar.emoji}</div>
+        <div className="char-avatar">
+          <AvatarSprite avatarId={avatarId} tier={avatarTier} equippedItems={equippedItems} />
+        </div>
         <div className="char-tier-badge">Tier {avatarTier}</div>
       </div>
       <div className="char-info">
         <span className="char-name">{characterName || 'Hero'}</span>
         <span className="char-level">Level {level}</span>
         {companion.name && (
-          <span className="char-companion">{companionEmoji} {companion.name}</span>
+          <span className="char-companion">
+            <CompanionDisplay stage={companion.evolutionStage} name={companion.name} compact /> {companion.name}
+          </span>
         )}
       </div>
       <div className="char-gear">
@@ -276,15 +277,14 @@ const COSMETIC_SECTIONS: { type: CosmeticType; label: string; emoji: string }[] 
 ];
 
 function CosmeticsTab() {
-  const { studyPoints, ownedCosmetics, equippedCosmetic, spendCoins, buyCosmetic, equipCosmetic } = useGameState();
+  const { studyPoints, ownedCosmetics, equippedCosmetic, buyCosmetic, equipCosmetic } = useGameState();
 
   const handleBuy = useCallback((id: string, cost: number) => {
     if (studyPoints < cost) return;
-    spendCoins(cost);
-    buyCosmetic(id, cost);
+    if (!buyCosmetic(id, cost)) return;
     playCoins();
     equipCosmetic(id);
-  }, [studyPoints, spendCoins, buyCosmetic, equipCosmetic]);
+  }, [studyPoints, buyCosmetic, equipCosmetic]);
 
   return (
     <div className="tab-content">

@@ -19,6 +19,7 @@ export type {
   BadgeDef,
   CompanionMood,
   CompanionStage,
+  CompanionSpecies,
 } from '@/config/character';
 
 // ─── Gemini API Response Shapes ───────────────────────────
@@ -68,6 +69,7 @@ export type EquippedItems = {
 
 export type Companion = {
   name: string;
+  species: import('@/config/character').CompanionSpecies;
   evolutionStage: 0 | 1 | 2 | 3; // 0=egg, 1=hatchling, 2=young, 3=legendary
 };
 
@@ -134,5 +136,6 @@ export type OnboardingData = {
   avatarId: import('@/config/character').AvatarId;
   characterName: string;
   startingPathId: string;
+  companionSpecies?: import('@/config/character').CompanionSpecies;
   geminiApiKey?: string;
 };

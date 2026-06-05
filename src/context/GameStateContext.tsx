@@ -28,6 +28,7 @@ import {
 import {
   GEAR_ITEMS,
   type AvatarId,
+  type CompanionSpecies,
   type GearSlot,
 } from '@/config/character';
 
@@ -79,7 +80,7 @@ const DEFAULT_STATE: GameState = {
   avatarTier: 1,
   equippedItems: {},
   unlockedGear: [],
-  companion: { name: '', evolutionStage: 0 },
+  companion: { name: '', species: 'spark', evolutionStage: 0 },
   ownedCosmetics: [],
   equippedCosmetic: null,
   onboardingComplete: false,
@@ -167,7 +168,11 @@ function loadState(): GameState {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<GameState>;
-      return { ...DEFAULT_STATE, ...parsed };
+      return {
+        ...DEFAULT_STATE,
+        ...parsed,
+        companion: { ...DEFAULT_STATE.companion, ...parsed.companion },
+      };
     }
   } catch {
     // Corrupted storage — fall back to defaults
@@ -224,6 +229,7 @@ type GameContextValue = GameState & {
   buyCosmetic: (cosmeticId: string, costSP: number) => boolean;
   equipCosmetic: (cosmeticId: string | null) => void;
   nameCompanion: (name: string) => void;
+  setCompanionSpecies: (species: CompanionSpecies) => void;
   completeOnboarding: (data: OnboardingData) => void;
 
   // System
@@ -390,7 +396,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
 
     const result = buildCompleteResult(prev, nextState);
 
-    setState((_s) => ({
+    setState(() => ({
       ...nextState,
       unlockedGear: [...prev.unlockedGear, ...result.newlyUnlockedGear],
     }));
@@ -408,7 +414,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     const nextState: GameState = { ...prev, completedLabs: newCompletedLabs };
     const result = buildCompleteResult(prev, nextState);
 
-    setState((_s) => ({
+    setState(() => ({
       ...nextState,
       unlockedGear: [...prev.unlockedGear, ...result.newlyUnlockedGear],
     }));
@@ -508,8 +514,15 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const setCompanionSpecies = useCallback((species: CompanionSpecies) => {
+    setState((s) => ({
+      ...s,
+      companion: { ...s.companion, species },
+    }));
+  }, []);
+
   const completeOnboarding = useCallback((data: OnboardingData) => {
-    const { avatarId, characterName, startingPathId, geminiApiKey } = data;
+    const { avatarId, characterName, startingPathId, companionSpecies, geminiApiKey } = data;
 
     // Unlock the first node of the chosen starting path
     const startingPath = LEARNING_PATHS.find((p) => p.id === startingPathId);
@@ -519,6 +532,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
       ...s,
       avatarId,
       characterName,
+      companion: { ...s.companion, species: companionSpecies ?? s.companion.species },
       geminiApiKey: geminiApiKey ?? s.geminiApiKey,
       onboardingComplete: true,
       // We don't auto-complete the first node, just ensure the path is "selected"
@@ -566,6 +580,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     buyCosmetic,
     equipCosmetic,
     nameCompanion,
+    setCompanionSpecies,
     completeOnboarding,
     resetAll,
   };

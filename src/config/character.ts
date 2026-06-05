@@ -27,9 +27,9 @@ export type AvatarDef = {
   emoji: string;
   /** Sprite sheet paths per tier — filled in during M8 */
   sprites: {
-    tier1: string | null;
-    tier2: string | null;
-    tier3: string | null;
+    tier1: string;
+    tier2: string;
+    tier3: string;
   };
 };
 
@@ -39,35 +39,35 @@ export const AVATARS: AvatarDef[] = [
     name: 'The Hooded Coder',
     description: 'A mysterious developer who writes code in the shadows.',
     emoji: '🧑‍💻',
-    sprites: { tier1: null, tier2: null, tier3: null },
+    sprites: { tier1: 'hooded-coder-tier1', tier2: 'hooded-coder-tier2', tier3: 'hooded-coder-tier3' },
   },
   {
     id: 'cyber-warrior',
     name: 'Cyber Warrior',
     description: 'Battle-hardened through thousands of pull requests.',
     emoji: '⚔️',
-    sprites: { tier1: null, tier2: null, tier3: null },
+    sprites: { tier1: 'cyber-warrior-tier1', tier2: 'cyber-warrior-tier2', tier3: 'cyber-warrior-tier3' },
   },
   {
     id: 'data-wizard',
     name: 'Data Wizard',
     description: 'Transforms raw data into pure gold with a single query.',
     emoji: '🧙',
-    sprites: { tier1: null, tier2: null, tier3: null },
+    sprites: { tier1: 'data-wizard-tier1', tier2: 'data-wizard-tier2', tier3: 'data-wizard-tier3' },
   },
   {
     id: 'cloud-architect',
     name: 'Cloud Architect',
     description: 'Builds castles in the cloud, one microservice at a time.',
     emoji: '☁️',
-    sprites: { tier1: null, tier2: null, tier3: null },
+    sprites: { tier1: 'cloud-architect-tier1', tier2: 'cloud-architect-tier2', tier3: 'cloud-architect-tier3' },
   },
   {
     id: 'rogue-hacker',
     name: 'Rogue Hacker',
     description: 'Finds the elegant solution in the most unexpected places.',
     emoji: '🕵️',
-    sprites: { tier1: null, tier2: null, tier3: null },
+    sprites: { tier1: 'rogue-hacker-tier1', tier2: 'rogue-hacker-tier2', tier3: 'rogue-hacker-tier3' },
   },
 ];
 
@@ -422,6 +422,61 @@ export const COSMETIC_ITEMS: CosmeticItem[] = [
 
 export type CompanionMood = 'happy' | 'idle' | 'sleepy';
 export type CompanionStage = 0 | 1 | 2 | 3;
+export type CompanionSpecies = 'spark' | 'owl' | 'cat' | 'iguana';
+
+export type CompanionDef = {
+  id: CompanionSpecies;
+  name: string;
+  description: string;
+  stageNames: Record<CompanionStage, string>;
+};
+
+export const COMPANIONS: CompanionDef[] = [
+  {
+    id: 'spark',
+    name: 'Spark',
+    description: 'A tiny energy pet that grows into a bright coding familiar.',
+    stageNames: {
+      0: 'Egg',
+      1: 'Sparkling',
+      2: 'Brightling',
+      3: 'Luminary',
+    },
+  },
+  {
+    id: 'owl',
+    name: 'Owl',
+    description: 'A wise night learner that evolves into a sage guardian.',
+    stageNames: {
+      0: 'Speckled Egg',
+      1: 'Owlet',
+      2: 'Scholar Owl',
+      3: 'Sage Owl',
+    },
+  },
+  {
+    id: 'cat',
+    name: 'Cat',
+    description: 'A curious debugging buddy with increasingly elegant chaos.',
+    stageNames: {
+      0: 'Curled Kitten',
+      1: 'Kitten',
+      2: 'Code Cat',
+      3: 'Arch Cat',
+    },
+  },
+  {
+    id: 'iguana',
+    name: 'Iguana',
+    description: 'A calm reptile friend that becomes a steady scale-armored ally.',
+    stageNames: {
+      0: 'Warm Egg',
+      1: 'Hatchling',
+      2: 'Crested Iguana',
+      3: 'Emerald Iguana',
+    },
+  },
+];
 
 /** Returns the CSS animation class for a given companion mood */
 export function getCompanionMoodClass(mood: CompanionMood): string {
@@ -460,6 +515,14 @@ export function getCompanionStageLabel(stage: CompanionStage): string {
     3: 'Legendary',
   };
   return labels[stage];
+}
+
+export function getCompanionDef(id: CompanionSpecies): CompanionDef {
+  return COMPANIONS.find((c) => c.id === id) ?? COMPANIONS[0];
+}
+
+export function getCompanionSpeciesStageLabel(species: CompanionSpecies, stage: CompanionStage): string {
+  return getCompanionDef(species).stageNames[stage];
 }
 
 // ─────────────────────────────────────────────────────────────

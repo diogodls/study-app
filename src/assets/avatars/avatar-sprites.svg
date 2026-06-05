@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <defs>
+    <g id="avatar-base">
+      <rect x="7" y="6" width="18" height="3" fill="var(--hair,#2b2138)"/>
+      <rect x="6" y="9" width="20" height="12" rx="2" fill="var(--hood,#56427b)"/>
+      <rect x="10" y="10" width="12" height="11" rx="2" fill="var(--skin,#f2b987)"/>
+      <rect x="11" y="14" width="3" height="2" fill="#1e1b29"/>
+      <rect x="18" y="14" width="3" height="2" fill="#1e1b29"/>
+      <rect x="14" y="18" width="4" height="1" fill="#8f4f55"/>
+      <rect x="8" y="22" width="16" height="7" rx="2" fill="var(--body,#3c8fdc)"/>
+      <rect x="12" y="22" width="8" height="4" fill="var(--chest,#1e1b29)"/>
+      <rect x="6" y="24" width="4" height="4" fill="var(--accent,#f59f4a)"/>
+      <rect x="22" y="24" width="4" height="4" fill="var(--accent,#f59f4a)"/>
+    </g>
+    <g id="tier-two">
+      <rect x="4" y="4" width="24" height="24" rx="5" fill="none" stroke="#65c7ff" stroke-width="1.5" opacity=".75"/>
+      <rect x="6" y="3" width="20" height="2" fill="#65c7ff" opacity=".45"/>
+    </g>
+    <g id="tier-three">
+      <rect x="3" y="3" width="26" height="26" rx="6" fill="none" stroke="#ffc247" stroke-width="2"/>
+      <rect x="2" y="15" width="3" height="3" fill="#ffc247"/>
+      <rect x="27" y="10" width="3" height="3" fill="#ffffff"/>
+      <rect x="25" y="24" width="2" height="2" fill="#ffc247"/>
+    </g>
+  </defs>
+
+  <symbol id="hooded-coder-tier1" viewBox="0 0 32 32">
+    <g style="--hair:#20192d;--hood:#5b4a7e;--skin:#f0b786;--body:#433668;--chest:#251f36;--accent:#f7a64a"><use href="#avatar-base"/></g>
+  </symbol>
+  <symbol id="hooded-coder-tier2" viewBox="0 0 32 32">
+    <use href="#tier-two"/><g style="--hair:#20192d;--hood:#6c58a1;--skin:#f0b786;--body:#4d3f76;--chest:#251f36;--accent:#65c7ff"><use href="#avatar-base"/></g>
+  </symbol>
+  <symbol id="hooded-coder-tier3" viewBox="0 0 32 32">
+    <use href="#tier-three"/><g style="--hair:#20192d;--hood:#7c62c8;--skin:#f0b786;--body:#563d91;--chest:#251f36;--accent:#ffc247"><use href="#avatar-base"/></g>
+  </symbol>
+
+  <symbol id="cyber-warrior-tier1" viewBox="0 0 32 32">
+    <g style="--hair:#2f313b;--hood:#516b83;--skin:#dca36f;--body:#2f88a6;--chest:#192936;--accent:#ff6b6b"><use href="#avatar-base"/></g>
+  </symbol>
+  <symbol id="cyber-warrior-tier2" viewBox="0 0 32 32">
+    <use href="#tier-two"/><g style="--hair:#2f313b;--hood:#5b7b98;--skin:#dca36f;--body:#319abf;--chest:#192936;--accent:#65c7ff"><use href="#avatar-base"/></g>
+  </symbol>
+  <symbol id="cyber-warrior-tier3" viewBox="0 0 32 32">
+    <use href="#tier-three"/><g style="--hair:#2f313b;--hood:#698ba9;--skin:#dca36f;--body:#35acd8;--chest:#192936;--accent:#ffc247"><use href="#avatar-base"/></g>
+  </symbol>
+
+  <symbol id="data-wizard-tier1" viewBox="0 0 32 32">
+    <g style="--hair:#47316b;--hood:#7352a8;--skin:#e6a978;--body:#7a4fc4;--chest:#241d35;--accent:#57d68d"><use href="#avatar-base"/></g>
+  </symbol>
+  <symbol id="data-wizard-tier2" viewBox="0 0 32 32">
+    <use href="#tier-two"/><g style="--hair:#47316b;--hood:#835ec0;--skin:#e6a978;--body:#8c5bdd;--chest:#241d35;--accent:#65c7ff"><use href="#avatar-base"/></g>
+  </symbol>
+  <symbol id="data-wizard-tier3" viewBox="0 0 32 32">
+    <use href="#tier-three"/><g style="--hair:#47316b;--hood:#9268dc;--skin:#e6a978;--body:#9d70ef;--chest:#241d35;--accent:#ffc247"><use href="#avatar-base"/></g>
+  </symbol>
+
+  <symbol id="cloud-architect-tier1" viewBox="0 0 32 32">
+    <g style="--hair:#d6e8ff;--hood:#6c9ed4;--skin:#f3c18d;--body:#3f76bb;--chest:#173252;--accent:#f5f7ff"><use href="#avatar-base"/></g>
+  </symbol>
+  <symbol id="cloud-architect-tier2" viewBox="0 0 32 32">
+    <use href="#tier-two"/><g style="--hair:#eef7ff;--hood:#78afe8;--skin:#f3c18d;--body:#4384d1;--chest:#173252;--accent:#65c7ff"><use href="#avatar-base"/></g>
+  </symbol>
+  <symbol id="cloud-architect-tier3" viewBox="0 0 32 32">
+    <use href="#tier-three"/><g style="--hair:#ffffff;--hood:#89c3ff;--skin:#f3c18d;--body:#5295e2;--chest:#173252;--accent:#ffc247"><use href="#avatar-base"/></g>
+  </symbol>
+
+  <symbol id="rogue-hacker-tier1" viewBox="0 0 32 32">
+    <g style="--hair:#18251f;--hood:#2d704f;--skin:#d79a6b;--body:#235f41;--chest:#12271d;--accent:#5dff9a"><use href="#avatar-base"/></g>
+  </symbol>
+  <symbol id="rogue-hacker-tier2" viewBox="0 0 32 32">
+    <use href="#tier-two"/><g style="--hair:#18251f;--hood:#33845b;--skin:#d79a6b;--body:#2a7350;--chest:#12271d;--accent:#65c7ff"><use href="#avatar-base"/></g>
+  </symbol>
+  <symbol id="rogue-hacker-tier3" viewBox="0 0 32 32">
+    <use href="#tier-three"/><g style="--hair:#18251f;--hood:#3d9c6b;--skin:#d79a6b;--body:#31875e;--chest:#12271d;--accent:#ffc247"><use href="#avatar-base"/></g>
+  </symbol>
+</svg>

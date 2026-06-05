@@ -1,7 +1,14 @@
 import { useGameState } from '@/context/GameStateContext';
-import { BADGE_DEFINITIONS, getAvatar, getGearItem, getCompanionEmoji, getCompanionStageLabel } from '@/config/character';
+import {
+  BADGE_DEFINITIONS,
+  COMPANIONS,
+  COSMETIC_ITEMS,
+  getGearItem,
+  getCompanionSpeciesStageLabel,
+} from '@/config/character';
 import { getLevel, getLevelTitle, getProgressToNextLevel, getCompanionStage } from '@/config/levels';
 import { LEARNING_PATHS } from '@/config/paths';
+import { AvatarSprite, CompanionDisplay } from '@/components/PixelSprites';
 
 const SLOT_LABELS: Record<string, string> = {
   weapon: '⚔️ Weapon',
@@ -30,6 +37,7 @@ export default function ProfilePage() {
     companion,
     equippedCosmetic,
     unlockedBadgeIds,
+    setCompanionSpecies,
   } = useGameState();
 
   document.title = 'Profile — DevQuest';
@@ -37,8 +45,8 @@ export default function ProfilePage() {
   const level   = getLevel(xp);
   const title   = getLevelTitle(level);
   const progress = getProgressToNextLevel(xp);
-  const avatar  = getAvatar(avatarId);
   const companionStage = getCompanionStage(level);
+  const cosmeticClass = equippedCosmetic ? (COSMETIC_ITEMS.find((c) => c.id === equippedCosmetic)?.cssClass ?? '') : '';
 
   // Stats calculations
   const totalLessons = completedNodes.length;
@@ -50,7 +58,7 @@ export default function ProfilePage() {
     <div className="page stagger-children">
       {/* ── Character Card ─────────────────────────────── */}
       <div
-        className={`card ${equippedCosmetic ?? ''}`}
+        className={`card ${cosmeticClass}`}
         style={{
           marginBottom: '1rem',
           background: 'linear-gradient(135deg, var(--bg-card) 0%, var(--bg-card-hover) 100%)',
@@ -58,7 +66,6 @@ export default function ProfilePage() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          {/* Avatar placeholder */}
           <div
             style={{
               width: '72px',
@@ -74,9 +81,8 @@ export default function ProfilePage() {
               boxShadow: avatarTier === 3 ? 'var(--shadow-glow-accent)' : 'none',
               animation: avatarTier === 3 ? 'glowPulse 2s ease-in-out infinite' : 'none',
             }}
-            aria-label={`${avatar.name} avatar, tier ${avatarTier}`}
           >
-            {avatar.emoji}
+            <AvatarSprite avatarId={avatarId} tier={avatarTier} equippedItems={equippedItems} />
           </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -204,13 +210,13 @@ export default function ProfilePage() {
           className="card"
           style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}
         >
-          <div
-            className={companionStage >= 1 ? 'animate-float' : ''}
-            style={{ fontSize: '2.5rem', flexShrink: 0 }}
-            aria-label={`Companion: ${getCompanionStageLabel(companionStage)}`}
-          >
-            {getCompanionEmoji(companionStage)}
-          </div>
+          <CompanionDisplay
+            stage={companionStage}
+            species={companion.species}
+            name={companion.name}
+            streak={streak}
+            allowNaming
+          />
           <div>
             {companionStage === 0 ? (
               <>
@@ -223,7 +229,9 @@ export default function ProfilePage() {
               <>
                 <p style={{ fontWeight: 600, marginBottom: '0.25rem' }}>
                   {companion.name || 'Unnamed'}{' '}
-                  <span className="badge badge-muted">{getCompanionStageLabel(companionStage)}</span>
+                  <span className="badge badge-muted">
+                    {getCompanionSpeciesStageLabel(companion.species, companionStage)}
+                  </span>
                 </p>
                 <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                   {streak >= 3 ? '😄 Happy — keep your streak going!' : streak >= 1 ? '😐 Idle — study today!' : '😴 Sleepy — break your streak!'}
@@ -231,6 +239,20 @@ export default function ProfilePage() {
               </>
             )}
           </div>
+        </div>
+        <div className="companion-picker" aria-label="Choose companion">
+          {COMPANIONS.map((pet) => (
+            <button
+              key={pet.id}
+              id={`companion-pick-${pet.id}`}
+              className={`companion-picker__option${companion.species === pet.id ? ' companion-picker__option--active' : ''}`}
+              onClick={() => setCompanionSpecies(pet.id)}
+              title={pet.description}
+            >
+              <CompanionDisplay stage={companionStage} species={pet.id} streak={streak} compact />
+              <span>{pet.name}</span>
+            </button>
+          ))}
         </div>
       </section>
 
