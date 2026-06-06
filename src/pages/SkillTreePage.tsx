@@ -97,14 +97,14 @@ function PathTab({
 // Main page
 // ─────────────────────────────────────────────────────────────
 export default function SkillTreePage() {
-  const { completedNodes, lives } = useGameState();
+  const { completedNodes, lives, selectedPathId: savedPathId } = useGameState();
   const navigate = useNavigate();
   const location = useLocation();
 
   // Honour startingPathId passed from OnboardingFlow via router state
   const initialPathId =
     (location.state as { startingPathId?: string } | null)?.startingPathId ??
-    LEARNING_PATHS[0].id;
+    savedPathId;
 
   const [selectedPathId, setSelectedPathId] = useState(initialPathId);
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);

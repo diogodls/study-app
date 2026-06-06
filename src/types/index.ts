@@ -75,7 +75,7 @@ export type Companion = {
 
 // ─── Settings ─────────────────────────────────────────────
 
-export type GeminiModel = 'gemini-2.5-flash' | 'gemini-2.5-pro';
+export type GeminiModel = 'gemini-3-flash-preview' | 'gemini-2.5-flash' | 'gemini-2.5-pro';
 
 // ─── Full Game State ──────────────────────────────────────
 
@@ -111,6 +111,7 @@ export type GameState = {
   ownedCosmetics: string[];    // cosmetic item IDs purchased
   equippedCosmetic: string | null;
   onboardingComplete: boolean;
+  selectedPathId: string;
 };
 
 // ─── Action Return Types ──────────────────────────────────

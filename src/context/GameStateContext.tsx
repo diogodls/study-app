@@ -34,6 +34,8 @@ import {
 
 import { LEARNING_PATHS } from '@/config/paths';
 import { setSoundEnabled } from '@/services/soundService';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/services/supabaseClient';
 
 import type {
   GameState,
@@ -73,7 +75,7 @@ const DEFAULT_STATE: GameState = {
   rewards: DEFAULT_REWARDS,
   timerEndsAt: null,
   geminiApiKey: '',
-  selectedModel: 'gemini-2.5-flash',
+  selectedModel: 'gemini-3-flash-preview',
   soundEnabled: true,
   characterName: '',
   avatarId: 'hooded-coder',
@@ -84,6 +86,7 @@ const DEFAULT_STATE: GameState = {
   ownedCosmetics: [],
   equippedCosmetic: null,
   onboardingComplete: false,
+  selectedPathId: LEARNING_PATHS[0].id,
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -163,7 +166,7 @@ function gearUnlockedByBadges(badgeIds: string[], currentGear: string[]): string
 // localStorage persistence
 // ─────────────────────────────────────────────────────────────
 
-function loadState(): GameState {
+function loadLocalState(): GameState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
@@ -180,12 +183,157 @@ function loadState(): GameState {
   return DEFAULT_STATE;
 }
 
-function saveState(state: GameState): void {
+function legacySaveState(state: GameState): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
     // Storage full — silently fail
   }
+}
+
+void legacySaveState;
+
+type UserProgressRow = {
+  xp: number | null;
+  study_points: number | null;
+  lives: number | null;
+  streak: number | null;
+  longest_streak: number | null;
+  last_study_date: string | null;
+  perfect_lessons: number | null;
+  life_recoveries: number | null;
+  character_name: string | null;
+  avatar_id: AvatarId | null;
+  avatar_tier: 1 | 2 | 3 | null;
+  onboarding_complete: boolean | null;
+  equipped_items: EquippedItems | null;
+  equipped_cosmetic: string | null;
+  companion: GameState['companion'] | null;
+  timer_ends_at: number | null;
+  selected_model: GeminiModel | null;
+  sound_enabled: boolean | null;
+  selected_path_id: string | null;
+};
+
+async function saveCloudState(userId: string, state: GameState): Promise<void> {
+  await supabase.from('user_progress').upsert({
+    user_id: userId,
+    xp: state.xp,
+    study_points: state.studyPoints,
+    lives: state.lives,
+    streak: state.streak,
+    longest_streak: state.longestStreak,
+    last_study_date: state.lastStudyDate,
+    perfect_lessons: state.perfectLessons,
+    life_recoveries: state.lifeRecoveries,
+    character_name: state.characterName,
+    avatar_id: state.avatarId,
+    avatar_tier: state.avatarTier,
+    onboarding_complete: state.onboardingComplete,
+    equipped_items: state.equippedItems,
+    equipped_cosmetic: state.equippedCosmetic,
+    companion: state.companion,
+    timer_ends_at: state.timerEndsAt,
+    selected_model: state.selectedModel,
+    sound_enabled: state.soundEnabled,
+    selected_path_id: state.selectedPathId,
+    updated_at: new Date().toISOString(),
+  });
+
+  await supabase.from('user_completions').delete().eq('user_id', userId);
+  const completions = [
+    ...state.completedNodes.map((nodeId) => ({ user_id: userId, node_id: nodeId, type: 'node' })),
+    ...state.completedLabs.map((nodeId) => ({ user_id: userId, node_id: nodeId, type: 'lab' })),
+  ];
+  if (completions.length) await supabase.from('user_completions').insert(completions);
+
+  await supabase.from('user_cosmetics').delete().eq('user_id', userId);
+  if (state.ownedCosmetics.length) {
+    await supabase.from('user_cosmetics').insert(
+      state.ownedCosmetics.map((cosmeticId) => ({ user_id: userId, cosmetic_id: cosmeticId })),
+    );
+  }
+
+  await supabase.from('user_gear').delete().eq('user_id', userId);
+  if (state.unlockedGear.length) {
+    await supabase.from('user_gear').insert(
+      state.unlockedGear.map((gearId) => ({ user_id: userId, gear_id: gearId })),
+    );
+  }
+
+  await supabase.from('user_rewards').delete().eq('user_id', userId);
+  if (state.rewards.length) {
+    await supabase.from('user_rewards').insert(
+      state.rewards.map((reward) => ({
+        id: reward.id,
+        user_id: userId,
+        name: reward.name,
+        cost_sp: reward.costSP,
+        type: reward.type,
+        duration_minutes: reward.durationMinutes ?? null,
+      })),
+    );
+  }
+}
+
+async function loadCloudState(userId: string): Promise<GameState | null> {
+  const { data: progress, error: progressError } = await supabase
+    .from('user_progress')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle<UserProgressRow>();
+
+  if (progressError) throw progressError;
+  if (!progress) return null;
+
+  const [completionsResult, cosmeticsResult, gearResult, rewardsResult] = await Promise.all([
+    supabase.from('user_completions').select('node_id,type').eq('user_id', userId),
+    supabase.from('user_cosmetics').select('cosmetic_id').eq('user_id', userId),
+    supabase.from('user_gear').select('gear_id').eq('user_id', userId),
+    supabase.from('user_rewards').select('id,name,cost_sp,type,duration_minutes').eq('user_id', userId),
+  ]);
+
+  if (completionsResult.error) throw completionsResult.error;
+  if (cosmeticsResult.error) throw cosmeticsResult.error;
+  if (gearResult.error) throw gearResult.error;
+  if (rewardsResult.error) throw rewardsResult.error;
+
+  const completions = completionsResult.data ?? [];
+
+  return {
+    ...DEFAULT_STATE,
+    xp: progress.xp ?? DEFAULT_STATE.xp,
+    studyPoints: progress.study_points ?? DEFAULT_STATE.studyPoints,
+    lives: progress.lives ?? DEFAULT_STATE.lives,
+    streak: progress.streak ?? DEFAULT_STATE.streak,
+    longestStreak: progress.longest_streak ?? DEFAULT_STATE.longestStreak,
+    lastStudyDate: progress.last_study_date,
+    completedNodes: completions.filter((row) => row.type === 'node').map((row) => row.node_id),
+    completedLabs: completions.filter((row) => row.type === 'lab').map((row) => row.node_id),
+    perfectLessons: progress.perfect_lessons ?? DEFAULT_STATE.perfectLessons,
+    lifeRecoveries: progress.life_recoveries ?? DEFAULT_STATE.lifeRecoveries,
+    rewards: (rewardsResult.data ?? []).map((reward) => ({
+      id: reward.id,
+      name: reward.name,
+      costSP: reward.cost_sp,
+      type: reward.type,
+      durationMinutes: reward.duration_minutes ?? undefined,
+    })),
+    timerEndsAt: progress.timer_ends_at,
+    geminiApiKey: '',
+    selectedModel: progress.selected_model ?? DEFAULT_STATE.selectedModel,
+    soundEnabled: progress.sound_enabled ?? DEFAULT_STATE.soundEnabled,
+    characterName: progress.character_name ?? DEFAULT_STATE.characterName,
+    avatarId: progress.avatar_id ?? DEFAULT_STATE.avatarId,
+    avatarTier: progress.avatar_tier ?? DEFAULT_STATE.avatarTier,
+    equippedItems: progress.equipped_items ?? DEFAULT_STATE.equippedItems,
+    unlockedGear: (gearResult.data ?? []).map((row) => row.gear_id),
+    companion: { ...DEFAULT_STATE.companion, ...progress.companion },
+    ownedCosmetics: (cosmeticsResult.data ?? []).map((row) => row.cosmetic_id),
+    equippedCosmetic: progress.equipped_cosmetic,
+    onboardingComplete: progress.onboarding_complete ?? DEFAULT_STATE.onboardingComplete,
+    selectedPathId: progress.selected_path_id ?? DEFAULT_STATE.selectedPathId,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -197,6 +345,7 @@ type GameContextValue = GameState & {
   level: number;
   progress: ReturnType<typeof getProgressToNextLevel>;
   unlockedBadgeIds: string[];
+  cloudLoading: boolean;
 
   // Core actions
   addXp: (amount: number) => AddXpResult;
@@ -247,16 +396,61 @@ const GameStateContext = createContext<GameContextValue | null>(null);
 // ─────────────────────────────────────────────────────────────
 
 export function GameStateProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<GameState>(loadState);
+  const { user } = useAuth();
+  const [state, setState] = useState<GameState>(DEFAULT_STATE);
+  const [cloudLoading, setCloudLoading] = useState(true);
+  const cloudLoadedRef = useRef(false);
 
   // Always-current ref for use inside useCallback without stale closures
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  // Persist to localStorage on every state change
+  // Load cloud state after login. If this is the user's first cloud login,
+  // migrate the pre-cloud localStorage progress once.
   useEffect(() => {
-    saveState(state);
-  }, [state]);
+    let cancelled = false;
+    cloudLoadedRef.current = false;
+
+    if (!user) {
+      setState(DEFAULT_STATE);
+      setCloudLoading(false);
+      return;
+    }
+
+    setCloudLoading(true);
+    loadCloudState(user.id)
+      .then(async (cloudState) => {
+        if (cancelled) return;
+        if (cloudState) {
+          setState(cloudState);
+        } else {
+          const localState = { ...loadLocalState(), geminiApiKey: '' };
+          setState(localState);
+          await saveCloudState(user.id, localState);
+          localStorage.removeItem(STORAGE_KEY);
+        }
+        cloudLoadedRef.current = true;
+      })
+      .catch((error) => {
+        console.error('Failed to load cloud state', error);
+        if (!cancelled) setState(DEFAULT_STATE);
+      })
+      .finally(() => {
+        if (!cancelled) setCloudLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  // Supabase is the source of truth after login.
+  useEffect(() => {
+    if (!user || !cloudLoadedRef.current || cloudLoading) return;
+    saveCloudState(user.id, state).catch((error) => {
+      console.error('Failed to save cloud state', error);
+    });
+  }, [state, user, cloudLoading]);
 
   // Sync sound service with setting
   useEffect(() => {
@@ -454,7 +648,8 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   // ── Settings ──────────────────────────────────────────────
 
   const setApiKey = useCallback((key: string) => {
-    setState((s) => ({ ...s, geminiApiKey: key }));
+    void key;
+    setState((s) => ({ ...s, geminiApiKey: '' }));
   }, []);
 
   const setModel = useCallback((model: GeminiModel) => {
@@ -522,7 +717,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const completeOnboarding = useCallback((data: OnboardingData) => {
-    const { avatarId, characterName, startingPathId, companionSpecies, geminiApiKey } = data;
+    const { avatarId, characterName, startingPathId, companionSpecies } = data;
 
     // Unlock the first node of the chosen starting path
     const startingPath = LEARNING_PATHS.find((p) => p.id === startingPathId);
@@ -533,8 +728,9 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
       avatarId,
       characterName,
       companion: { ...s.companion, species: companionSpecies ?? s.companion.species },
-      geminiApiKey: geminiApiKey ?? s.geminiApiKey,
+      geminiApiKey: '',
       onboardingComplete: true,
+      selectedPathId: startingPathId,
       // We don't auto-complete the first node, just ensure the path is "selected"
       // The first node is naturally available since it has no prerequisites
       completedNodes: firstNodeId ? [] : s.completedNodes, // remains empty — first node shows as available
@@ -549,7 +745,18 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   const resetAll = useCallback(() => {
     setState(DEFAULT_STATE);
     localStorage.removeItem(STORAGE_KEY);
-  }, []);
+    const userId = user?.id;
+    if (!userId) return;
+    Promise.all([
+      supabase.from('user_rewards').delete().eq('user_id', userId),
+      supabase.from('user_gear').delete().eq('user_id', userId),
+      supabase.from('user_cosmetics').delete().eq('user_id', userId),
+      supabase.from('user_completions').delete().eq('user_id', userId),
+      supabase.from('user_generated_content').delete().eq('user_id', userId),
+      supabase.from('user_content_notes').delete().eq('user_id', userId),
+      supabase.from('user_progress').delete().eq('user_id', userId),
+    ]).catch((error) => console.error('Failed to reset cloud state', error));
+  }, [user]);
 
   // ── Context value ─────────────────────────────────────────
 
@@ -558,6 +765,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     level,
     progress,
     unlockedBadgeIds,
+    cloudLoading,
     addXp,
     addStudyPoints,
     spendCoins,

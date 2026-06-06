@@ -1,0 +1,4 @@
+﻿storeFile=../devquest-release.keystore
+storePassword=CHANGE_ME
+keyAlias=devquest
+keyPassword=CHANGE_ME

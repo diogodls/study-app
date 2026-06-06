@@ -14,9 +14,11 @@ import {
   generatePracticeSession,
 } from '@/services/geminiService';
 import { playCorrect, playWrong, playLevelUp, playCoins } from '@/services/soundService';
+import { getCachedContent, saveCachedContent } from '@/services/contentCacheService';
 import GeminiLoadingState from '@/components/GeminiLoadingState';
 import GeminiErrorCard from '@/components/GeminiErrorCard';
 import { AvatarSprite, CompanionDisplay } from '@/components/PixelSprites';
+import ContentNotes from '@/components/ContentNotes';
 import type { CheatSheetSession, CodingLab, AddXpResult, CompleteNodeResult } from '@/types';
 
 // ─────────────────────────────────────────────────────────────
@@ -74,11 +76,13 @@ const mdComponents = {
 
 function CheatSheetView({
   session,
+  noteContextId,
   onStartQuiz,
   onOpenLab,
   showLab = true,
 }: {
   session: CheatSheetSession;
+  noteContextId: string;
   onStartQuiz: () => void;
   onOpenLab: () => void;
   showLab?: boolean;
@@ -88,6 +92,7 @@ function CheatSheetView({
       <div className="modal-prose">
         <ReactMarkdown components={mdComponents}>{session.cheatSheet}</ReactMarkdown>
       </div>
+      <ContentNotes contextId={noteContextId} contentType="lesson" />
       <div className="modal-actions">
         <button id="open-lab-btn" className="btn btn-ghost" onClick={onOpenLab} hidden={!showLab}>
           🧪 Coding Lab
@@ -188,14 +193,16 @@ function QuizView({
 }
 
 function CodingLabView({
-  nodeId,
+  contextId,
+  completionNodeId,
   apiKey,
   model,
   geminiTopic,
   onComplete,
   onBack,
 }: {
-  nodeId: string;
+  contextId: string;
+  completionNodeId?: string;
   apiKey: string;
   model: string;
   geminiTopic: string;
@@ -213,11 +220,17 @@ function CodingLabView({
   useEffect(() => {
     if (loadedRef.current) return;
     loadedRef.current = true;
-    generateCodingLab(geminiTopic, apiKey, model)
+    getCachedContent<CodingLab>(contextId, 'lab', model)
+      .then(async (cached) => {
+        if (cached) return cached;
+        const generated = await generateCodingLab(geminiTopic, apiKey, model);
+        await saveCachedContent(contextId, 'lab', model, generated);
+        return generated;
+      })
       .then(setLab)
       .catch(setLabError)
       .finally(() => setLoading(false));
-  }, [geminiTopic, apiKey, model]);
+  }, [contextId, geminiTopic, apiKey, model]);
 
   const copy = useCallback(async (text: string) => {
     await navigator.clipboard.writeText(text);
@@ -242,10 +255,10 @@ function CodingLabView({
   }, [lab]);
 
   const handleComplete = useCallback(() => {
-    completeLab(nodeId);
+    if (completionNodeId) completeLab(completionNodeId);
     playCoins();
     onComplete();
-  }, [completeLab, nodeId, onComplete]);
+  }, [completeLab, completionNodeId, onComplete]);
 
   if (loading) return <GeminiLoadingState message="Generating your coding lab..." />;
   if (labError || !lab) {
@@ -312,6 +325,8 @@ function CodingLabView({
           ⬇️ Download Files
         </button>
       </div>
+
+      <ContentNotes contextId={contextId} contentType="lab" />
 
       <div className="modal-actions">
         <button className="btn btn-ghost" onClick={onBack}>← Back to Lesson</button>
@@ -556,6 +571,10 @@ export default function SessionModal({
   } = useGameState();
 
   const node = nodeId ? getNode(nodeId) : null;
+  const practiceContextId = practiceQuestion
+    ? `arena-${practiceQuestion.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 120)}`
+    : null;
+  const noteContextId = nodeId ?? practiceContextId ?? 'practice';
   const alreadyCompleted = nodeId ? completedNodes.includes(nodeId) : false;
 
   const [view, setView] = useState<ModalView>('loading');
@@ -577,9 +596,15 @@ export default function SessionModal({
     if (!topic) return;
     loadedRef.current = true;
 
-    const loader = practiceMode || recoveryMode
+    const loader = practiceMode || recoveryMode || !nodeId
       ? generatePracticeSession(topic, geminiApiKey, selectedModel)
-      : generateLesson(topic, geminiApiKey, selectedModel);
+      : getCachedContent<CheatSheetSession>(nodeId, 'lesson', selectedModel)
+          .then(async (cached) => {
+            if (cached) return cached;
+            const generated = await generateLesson(topic, geminiApiKey, selectedModel);
+            await saveCachedContent(nodeId, 'lesson', selectedModel, generated);
+            return generated;
+          });
 
     loader
       .then((s) => {
@@ -590,7 +615,7 @@ export default function SessionModal({
         setError(err);
         setView('error');
       });
-  }, [node, practiceQuestion, geminiApiKey, selectedModel, practiceMode, recoveryMode]);
+  }, [node, nodeId, practiceQuestion, geminiApiKey, selectedModel, practiceMode, recoveryMode]);
 
   // Lock body scroll while modal is open
   useEffect(() => {
@@ -722,9 +747,10 @@ export default function SessionModal({
           {view === 'lesson' && session && (
             <CheatSheetView
               session={session}
+              noteContextId={noteContextId}
               onStartQuiz={handleStartQuiz}
               onOpenLab={() => setView('lab')}
-              showLab={!practiceMode && !recoveryMode && Boolean(node && nodeId)}
+              showLab={!recoveryMode && Boolean(node?.geminiTopic || practiceQuestion)}
             />
           )}
 
@@ -738,12 +764,13 @@ export default function SessionModal({
             />
           )}
 
-          {view === 'lab' && node && nodeId && (
+          {view === 'lab' && (node?.geminiTopic || practiceQuestion) && (
             <CodingLabView
-              nodeId={nodeId}
+              contextId={noteContextId}
+              completionNodeId={nodeId}
               apiKey={geminiApiKey}
               model={selectedModel}
-              geminiTopic={node.geminiTopic}
+              geminiTopic={node?.geminiTopic ?? practiceQuestion ?? ''}
               onComplete={handleLabComplete}
               onBack={() => setView('lesson')}
             />

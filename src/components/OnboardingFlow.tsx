@@ -177,7 +177,7 @@ function StepName({
 // Step 4 — API Key (skippable)
 // ─────────────────────────────────────────────────────────────
 
-function StepApiKey({
+function LegacyStepApiKey({
   apiKey,
   onApiKey,
   onNext,
@@ -266,6 +266,38 @@ function StepApiKey({
           onClick={onNext}
           disabled={!apiKey.trim()}
         >
+          Continue →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+void LegacyStepApiKey;
+
+function StepApiKey({
+  onNext,
+  onBack,
+}: {
+  apiKey: string;
+  onApiKey: (k: string) => void;
+  onNext: () => void;
+  onSkip: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <div className="onboarding-step">
+      <h2 className="onboarding-step-title">DevQuest AI is connected</h2>
+      <p className="onboarding-step-sub">
+        Lessons, quizzes, and labs are generated through the secure Supabase backend.
+        No Gemini key is stored on this device.
+      </p>
+      <div className="onboarding-note">
+        Your progress will sync to your DevQuest account after each session.
+      </div>
+      <div className="onboarding-actions">
+        <button className="btn btn-ghost" onClick={onBack}>← Back</button>
+        <button id="apikey-next-btn" className="btn btn-primary btn-3d" onClick={onNext}>
           Continue →
         </button>
       </div>
