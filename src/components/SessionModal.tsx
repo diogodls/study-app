@@ -620,7 +620,11 @@ export default function SessionModal({
   // Lock body scroll while modal is open
   useEffect(() => {
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = ''; };
+    document.body.classList.add('session-modal-open');
+    return () => {
+      document.body.style.overflow = '';
+      document.body.classList.remove('session-modal-open');
+    };
   }, []);
 
   const retry = useCallback(() => {

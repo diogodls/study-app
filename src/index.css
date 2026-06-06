@@ -3050,3 +3050,9 @@ code, pre {
 .modal-overlay {
   z-index: var(--z-modal);
 }
+
+/* Hide fixed app chrome while a lesson or lab is open */
+body.session-modal-open .app-nav,
+body.session-modal-open .app-header {
+  display: none;
+}
