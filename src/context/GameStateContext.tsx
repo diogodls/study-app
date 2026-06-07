@@ -273,16 +273,14 @@ async function saveCloudState(userId: string, state: GameState): Promise<void> {
   await supabase.from('user_rewards').delete().eq('user_id', userId);
   if (state.rewards.length) {
     await supabase.from('user_rewards').insert(
-      state.rewards
-        .filter((reward) => !DEFAULT_REWARD_IDS.has(reward.id))
-        .map((reward) => ({
+      state.rewards.map((reward) => ({
         id: reward.id,
         user_id: userId,
         name: reward.name,
         cost_sp: reward.costSP,
         type: reward.type,
         duration_minutes: reward.durationMinutes ?? null,
-        })),
+      })),
     );
   }
 }
