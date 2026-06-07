@@ -61,6 +61,15 @@ const DEFAULT_REWARDS: Reward[] = [
   { id: 'default-4', name: 'Favorite Snack', costSP: 200, type: 'once' },
 ];
 
+const DEFAULT_REWARD_IDS = new Set(DEFAULT_REWARDS.map((reward) => reward.id));
+
+function mergeRewardsWithDefaults(rewards: Reward[]): Reward[] {
+  const merged = new Map<string, Reward>();
+  for (const reward of DEFAULT_REWARDS) merged.set(reward.id, reward);
+  for (const reward of rewards) merged.set(reward.id, reward);
+  return Array.from(merged.values());
+}
+
 const DEFAULT_STATE: GameState = {
   xp: 0,
   studyPoints: 0,
@@ -264,14 +273,16 @@ async function saveCloudState(userId: string, state: GameState): Promise<void> {
   await supabase.from('user_rewards').delete().eq('user_id', userId);
   if (state.rewards.length) {
     await supabase.from('user_rewards').insert(
-      state.rewards.map((reward) => ({
+      state.rewards
+        .filter((reward) => !DEFAULT_REWARD_IDS.has(reward.id))
+        .map((reward) => ({
         id: reward.id,
         user_id: userId,
         name: reward.name,
         cost_sp: reward.costSP,
         type: reward.type,
         duration_minutes: reward.durationMinutes ?? null,
-      })),
+        })),
     );
   }
 }
@@ -312,13 +323,13 @@ async function loadCloudState(userId: string): Promise<GameState | null> {
     completedLabs: completions.filter((row) => row.type === 'lab').map((row) => row.node_id),
     perfectLessons: progress.perfect_lessons ?? DEFAULT_STATE.perfectLessons,
     lifeRecoveries: progress.life_recoveries ?? DEFAULT_STATE.lifeRecoveries,
-    rewards: (rewardsResult.data ?? []).map((reward) => ({
+    rewards: mergeRewardsWithDefaults((rewardsResult.data ?? []).map((reward) => ({
       id: reward.id,
       name: reward.name,
       costSP: reward.cost_sp,
       type: reward.type,
       durationMinutes: reward.duration_minutes ?? undefined,
-    })),
+    }))),
     timerEndsAt: progress.timer_ends_at,
     geminiApiKey: '',
     selectedModel: progress.selected_model ?? DEFAULT_STATE.selectedModel,
@@ -640,6 +651,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const removeReward = useCallback((id: string) => {
+    if (DEFAULT_REWARD_IDS.has(id)) return;
     setState((s) => ({
       ...s,
       rewards: s.rewards.filter((r) => r.id !== id),

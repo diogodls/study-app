@@ -18,6 +18,8 @@ import { AvatarSprite, CompanionDisplay } from '@/components/PixelSprites';
 
 document.title = 'Reward Shop — DevQuest';
 
+const DEFAULT_REWARD_IDS = new Set(['default-1', 'default-2', 'default-3', 'default-4']);
+
 // ─────────────────────────────────────────────────────────────
 // Character Card (live preview for cosmetics tab)
 // ─────────────────────────────────────────────────────────────
@@ -229,6 +231,7 @@ function RewardsTab() {
                     className="reward-card__delete"
                     onClick={() => removeReward(r.id)}
                     aria-label="Delete reward"
+                    hidden={DEFAULT_REWARD_IDS.has(r.id)}
                   >
                     🗑
                   </button>
