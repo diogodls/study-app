@@ -590,9 +590,13 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
 
     const result = buildCompleteResult(prev, nextState);
 
-    setState(() => ({
-      ...nextState,
-      unlockedGear: [...prev.unlockedGear, ...result.newlyUnlockedGear],
+    setState((current) => ({
+      ...current,
+      completedNodes: nextState.completedNodes,
+      streak: nextState.streak,
+      longestStreak: nextState.longestStreak,
+      lastStudyDate: nextState.lastStudyDate,
+      unlockedGear: [...current.unlockedGear, ...result.newlyUnlockedGear.filter((gearId) => !current.unlockedGear.includes(gearId))],
     }));
 
     return result;
@@ -608,9 +612,10 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     const nextState: GameState = { ...prev, completedLabs: newCompletedLabs };
     const result = buildCompleteResult(prev, nextState);
 
-    setState(() => ({
-      ...nextState,
-      unlockedGear: [...prev.unlockedGear, ...result.newlyUnlockedGear],
+    setState((current) => ({
+      ...current,
+      completedLabs: nextState.completedLabs,
+      unlockedGear: [...current.unlockedGear, ...result.newlyUnlockedGear.filter((gearId) => !current.unlockedGear.includes(gearId))],
     }));
 
     return result;
