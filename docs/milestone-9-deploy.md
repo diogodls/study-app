@@ -24,10 +24,8 @@ supabase functions deploy gemini-proxy
 In Supabase Auth, enable:
 
 - Email/password
-- Google OAuth
 
-For web deploys, add the Vercel URL to Supabase Auth redirect URLs.
-For Android OAuth, add the Capacitor app URL scheme after the APK package is finalized.
+For web deploys, add the Vercel URL to Supabase Auth redirect URLs if email confirmation is enabled.
 
 ## Vercel
 

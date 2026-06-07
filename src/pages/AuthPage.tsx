@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 type Mode = 'sign-in' | 'sign-up';
 
 export default function AuthPage() {
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle } = useAuth();
+  const { signInWithEmail, signUpWithEmail } = useAuth();
   const [mode, setMode] = useState<Mode>('sign-in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -44,17 +44,6 @@ export default function AuthPage() {
       setLoading(false);
     }
   }, [email, password, geminiApiKey, mode, signInWithEmail, signUpWithEmail]);
-
-  const google = useCallback(async () => {
-    setError('');
-    setLoading(true);
-    try {
-      await signInWithGoogle();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Google sign-in failed.');
-      setLoading(false);
-    }
-  }, [signInWithGoogle]);
 
   return (
     <div className="auth-shell">
@@ -128,12 +117,6 @@ export default function AuthPage() {
 
         <button id="auth-submit-btn" className="btn btn-primary btn-3d btn-full" disabled={loading} onClick={submit}>
           {loading ? <><Loader size={16} className="animate-spin" /> Working...</> : mode === 'sign-in' ? 'Sign in' : 'Create account'}
-        </button>
-
-        <div className="divider-text">or</div>
-
-        <button id="auth-google-btn" className="btn btn-secondary btn-full" disabled={loading} onClick={google}>
-          Continue with Google
         </button>
       </div>
     </div>

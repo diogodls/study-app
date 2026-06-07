@@ -20,7 +20,6 @@ type AuthContextValue = {
   signUpWithEmail: (email: string, password: string, geminiApiKey: string) => Promise<boolean>;
   saveGeminiKey: (apiKey: string) => Promise<void>;
   deleteGeminiKey: () => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -105,14 +104,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false;
   }, []);
 
-  const signInWithGoogle = useCallback(async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin },
-    });
-    if (error) throw error;
-  }, []);
-
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
@@ -128,7 +119,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUpWithEmail,
     saveGeminiKey,
     deleteGeminiKey,
-    signInWithGoogle,
     signOut,
   }), [
     session,
@@ -139,7 +129,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUpWithEmail,
     saveGeminiKey,
     deleteGeminiKey,
-    signInWithGoogle,
     signOut,
   ]);
 
