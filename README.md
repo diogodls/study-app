@@ -1,129 +1,38 @@
 # DevQuest
 
-DevQuest is a gamified study app for software engineering topics. It combines structured learning paths, AI-generated lessons and coding labs, a progression system with XP and study points, and a mobile-friendly experience that runs both as a PWA and as an Android app packaged with Capacitor.
+DevQuest is a gamified study app for software engineering. It mixes structured learning paths, AI-generated lessons and coding labs, progression mechanics, and a mobile-first experience that runs on the web and on Android.
 
-The project started as a React web app and was later packaged for Android. Today, the web app is the main source of truth, with Supabase handling authentication, cloud persistence, per-user AI keys, cached generated content, and notes.
+The project was built in React/Vite and later packaged for Android with Capacitor. Today, Supabase powers authentication, cloud persistence, encrypted per-user Gemini keys, cached generated content, and lesson/lab notes.
 
-## What the app does
+## Highlights
 
-- Structured learning paths for:
-  - Data Structures
-  - AWS
-  - Backend
-  - System Design
-  - Testing
-  - Performance
-- AI-generated lesson sessions with:
-  - markdown cheat sheets
-  - quizzes
-  - coding labs
-- Practice Arena for custom topics
-- XP, levels, streaks, lives, and Study Points
-- Reward shop with default rewards plus user-defined rewards
-- Companion and avatar progression
+- Learning paths for Data Structures, AWS, Backend, System Design, Testing, and Performance
+- AI-generated lessons, quizzes, coding labs, and free-topic practice sessions
+- XP, levels, streaks, lives, Study Points, rewards, companion and avatar progression
+- Default rewards plus custom rewards created by the user
 - Per-user notes attached to lessons and labs
-- Per-user caching of generated lessons and labs in Supabase
-- Android build via Capacitor
+- PWA support and Android release build
 
-## Current stack
+## Stack
 
-- Frontend: React 19 + TypeScript + Vite
+- Frontend: React 19, TypeScript, Vite
 - Routing: `HashRouter`
-- Styling: custom CSS design system
-- Markdown/code rendering:
-  - `react-markdown`
-  - `react-syntax-highlighter`
-- Backend/platform:
-  - Supabase Auth
-  - Supabase Postgres
-  - Supabase Edge Functions
-- AI: Gemini via a Supabase proxy function
+- Backend: Supabase Auth, Postgres, Edge Functions
+- AI: Gemini behind `gemini-proxy`
 - Hosting: Vercel
-- Mobile packaging: Capacitor + Android
+- Mobile: Capacitor + Android
 
-## Architecture
+## How it works
 
-### Frontend
+- Users sign in with email/password
+- Each user stores their own Gemini key through the authenticated backend flow
+- Supabase becomes the source of truth after login
+- Generated lessons and labs are cached per user
+- Notes are saved per user and per content item
 
-- `src/pages/`
-  - main screens such as Skill Tree, Practice Arena, Shop, Profile, Settings, Auth
-- `src/components/`
-  - shared UI such as `Layout`, `SessionModal`, `DopamineTimer`, `ContentNotes`
-- `src/context/`
-  - global app state and auth
-- `src/config/`
-  - learning paths, levels, character and item definitions
-- `src/services/`
-  - Supabase client, Gemini integration, content cache, notes, sound service
+## Local setup
 
-### Backend
-
-- `supabase/migrations/`
-  - schema for progress, completions, cosmetics, gear, rewards, user AI keys, generated content cache, and notes
-- `supabase/functions/gemini-proxy/`
-  - authenticated Edge Function used as the app's AI gateway
-
-### Mobile
-
-- `android/`
-  - generated Capacitor Android project
-- `capacitor.config.ts`
-  - Android package ID: `com.devquest.app`
-
-## Authentication and AI model
-
-The app currently supports email/password authentication only.
-
-Each user provides their own Gemini API key during sign-up or later in the app. That key is not stored in the browser as plain app state for AI calls. Instead:
-
-- the key is sent to the authenticated Supabase Edge Function
-- it is stored encrypted per user
-- the frontend calls the `gemini-proxy` function for generation
-
-This means:
-
-- user progress is tied to the authenticated account
-- generated content is tied to the authenticated account
-- notes are tied to the authenticated account
-
-## Persistence model
-
-After login, Supabase is the source of truth.
-
-The app stores:
-
-- progress and progression state
-- completed nodes and labs
-- cosmetics and gear unlocks
-- rewards
-- selected path
-- encrypted Gemini key presence
-- generated lessons and labs cache
-- lesson and lab notes
-
-On the first authenticated session, local progress can be migrated into the cloud state.
-
-## Rewards behavior
-
-The reward shop includes:
-
-- built-in default rewards
-- user-created custom rewards
-
-Default rewards are preserved and custom rewards are stored alongside them.
-
-## PWA and Android
-
-DevQuest is installable as a PWA and also buildable as an Android APK.
-
-- PWA config lives in `vite.config.ts`
-- Android packaging lives in `android/` and `capacitor.config.ts`
-
-This is not a React Native app. It is a React web app packaged for Android through Capacitor.
-
-## Environment variables
-
-Create a local `.env.local` with:
+Create `.env.local`:
 
 ```env
 VITE_SUPABASE_URL=your_supabase_url
@@ -131,108 +40,49 @@ VITE_SUPABASE_ANON_KEY=your_supabase_publishable_key
 VITE_GEMINI_MODEL=gemini-3-flash-preview
 ```
 
-An example file is available in `.env.example`.
-
-## Local development
-
-Install dependencies:
+Install and run:
 
 ```bash
 npm install
-```
-
-Run the app:
-
-```bash
 npm run dev
 ```
 
-Build for production:
+Useful commands:
 
 ```bash
 npm run build
-```
-
-Lint:
-
-```bash
 npm run lint
-```
-
-Preview production build:
-
-```bash
 npm run preview
-```
-
-## Android commands
-
-Add Android platform if needed:
-
-```bash
-npm run android:add
-```
-
-Sync the latest web build into Android:
-
-```bash
 npm run android:sync
-```
-
-Open in Android Studio:
-
-```bash
 npm run android:open
 ```
 
-The generated release APK is expected at:
+## Deploy
+
+Web deploy uses Vercel with:
+
+- build command: `npm run build`
+- output directory: `dist`
+
+Backend deploy uses Supabase:
+
+```bash
+supabase link --project-ref <project-ref>
+supabase db push
+supabase functions deploy gemini-proxy
+```
+
+## Android
+
+The Android project lives in `android/`, generated from the web app with Capacitor.
+
+Release APK output:
 
 ```text
 android/app/build/outputs/apk/release/app-release.apk
 ```
 
-## Supabase setup
-
-Link the project and push migrations:
-
-```bash
-supabase link --project-ref <project-ref>
-supabase db push
-```
-
-Deploy the Gemini proxy:
-
-```bash
-supabase functions deploy gemini-proxy
-```
-
-Set required secrets:
-
-- `GEMINI_API_KEY` if you want a shared server-side fallback flow
-- `USER_KEY_ENCRYPTION_SECRET` for per-user key encryption
-
-In the current implementation, per-user encrypted keys are part of the main flow.
-
-## Deployment
-
-### Web
-
-The app is configured for Vercel:
-
-- build command: `npm run build`
-- output directory: `dist`
-
-`vercel.json` is already present in the repo.
-
-### Backend
-
-Supabase is used for:
-
-- auth
-- database
-- edge functions
-
-## Main project files
+## Important files
 
 - [package.json](/C:/Users/didi/Desktop/projetos/study-app/package.json)
 - [vite.config.ts](/C:/Users/didi/Desktop/projetos/study-app/vite.config.ts)
@@ -244,26 +94,15 @@ Supabase is used for:
 - [src/pages/PracticePage.tsx](/C:/Users/didi/Desktop/projetos/study-app/src/pages/PracticePage.tsx)
 - [src/pages/ShopPage.tsx](/C:/Users/didi/Desktop/projetos/study-app/src/pages/ShopPage.tsx)
 - [supabase/functions/gemini-proxy/index.ts](/C:/Users/didi/Desktop/projetos/study-app/supabase/functions/gemini-proxy/index.ts)
-- [docs/milestone-9-deploy.md](/C:/Users/didi/Desktop/projetos/study-app/docs/milestone-9-deploy.md)
 
-## Project status
+## Status
 
-Implemented:
+Implemented today:
 
-- multi-page React app
-- onboarding
-- cloud auth and sync
+- onboarding and auth
+- cloud sync
 - per-user AI key flow
 - generated content cache
-- notes per lesson/lab
+- notes on lessons and labs
 - reward shop
-- mobile packaging
-
-Known tradeoffs:
-
-- some large frontend bundles still trigger Vite chunk-size warnings
-- the project keeps a few React Fast Refresh lint warnings in context files
-
-## Credits
-
-This README was derived from the original milestone checklist and implementation planning docs, then updated to match the code that actually ships in the repository today.
+- Android packaging
