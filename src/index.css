@@ -3056,3 +3056,11 @@ body.session-modal-open .app-nav,
 body.session-modal-open .app-header {
   display: none;
 }
+
+/* -- Quiz code snippet (Proposta C) ------------------------ */
+.quiz-code-snippet {
+  margin: 0.5rem 0 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}

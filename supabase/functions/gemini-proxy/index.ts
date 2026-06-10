@@ -24,20 +24,21 @@ function jsonResponse(body: unknown, status = 200) {
 
 const lessonPrompt = (topic: string) => `You are DevQuest AI, an expert computer science tutor for working developers.
 
-Generate a concise, practical lesson about: ${topic}
+Generate a comprehensive, in-depth lesson about: ${topic}
 
 Respond with ONLY valid JSON - no markdown fences, no prose outside the JSON object.
 
 Required schema:
 {
   "title": "lesson title (max 60 chars)",
-  "cheatSheet": "full markdown lesson (400-700 words). Use ## headings, bullet points, bold key terms, and fenced code blocks with language tags. End with a '## Quick Reference' bullet list of 3-5 key takeaways.",
+  "cheatSheet": "comprehensive markdown lesson (1200-2000 words). MUST follow this structure:\n## Concept\\nWhat it is explained intuitively with a real-world analogy. Why it matters in practice.\\n## How It Works\\nDetailed mechanism with step-by-step walkthrough. Include diagrams described in text if applicable.\\n## Code Examples\\nAt least 3 real, runnable code snippets (use fenced code blocks with language tags). Each snippet should demonstrate a different aspect. Add inline comments explaining key lines. Show both good and bad examples when relevant.\\n## Common Mistakes\\n2-3 specific pitfalls developers actually fall into, with code showing the mistake and the fix.\\n## When To Use / When Not To Use\\nPractical decision guide: scenarios where this concept shines vs. where alternatives are better.\\n## Quick Reference\\n5-7 bullet summary of the most important takeaways.",
   "quizzes": [
     {
-      "question": "clear, specific question testing understanding",
+      "question": "question that tests DEEP understanding (not simple recall)",
+      "codeSnippet": "optional code block for analysis questions (use for at least 3 of the 5 quizzes)",
       "options": ["option A", "option B", "option C", "option D"],
       "correctIndex": 0,
-      "explanation": "why this answer is correct (1-2 sentences, mention why others are wrong)"
+      "explanation": "thorough explanation: why the correct answer is right AND why each wrong option is wrong (2-3 sentences)"
     }
   ]
 }
@@ -46,6 +47,14 @@ Rules:
 - quizzes: exactly 5 items
 - options: exactly 4 strings each
 - correctIndex: integer 0-3
+- codeSnippet: include for at LEAST 3 of the 5 quizzes. These must be real, realistic code (not pseudocode).
+- Quiz question types to vary across these categories:
+  * Code analysis: "What is the output/complexity/behavior of this code?"
+  * Comparison: "Why would you use X over Y in this scenario?"
+  * Debugging: "This code has a bug. What's wrong?"
+  * Application: "Given these constraints, which approach is best?"
+  * Tradeoff: "What is the downside of using X?"
+- NEVER ask simple definition recall like "What is X?" or "Which of these defines X?"
 - Escape all special characters in JSON strings
 - No trailing commas`;
 
@@ -75,13 +84,14 @@ Respond with ONLY valid JSON - no markdown fences, no prose outside the JSON obj
 Required schema:
 {
   "title": "session title (max 50 chars)",
-  "cheatSheet": "concise markdown summary (200-350 words) covering the key concepts with examples",
+  "cheatSheet": "focused markdown summary (500-800 words). Include: key concepts explained clearly, at least 2 code examples with inline comments, and a practical tip or common mistake to avoid.",
   "quizzes": [
     {
-      "question": "question testing understanding",
+      "question": "question testing deep understanding (not recall)",
+      "codeSnippet": "optional code for analysis questions (use for at least 2 of the 3 quizzes)",
       "options": ["option A", "option B", "option C", "option D"],
       "correctIndex": 0,
-      "explanation": "why this is correct (1-2 sentences)"
+      "explanation": "why this is correct and why others are wrong (2-3 sentences)"
     }
   ]
 }
@@ -89,7 +99,10 @@ Required schema:
 Rules:
 - quizzes: exactly 3 items
 - options: exactly 4 strings each
-- correctIndex: integer 0-3`;
+- correctIndex: integer 0-3
+- codeSnippet: include for at LEAST 2 of the 3 quizzes
+- NEVER ask simple definition recall like "What is X?"
+- Vary question types: code analysis, debugging, comparison, application`;
 
 function buildPrompt(type: RequestType, topic: string) {
   if (type === 'lab') return labPrompt(topic);

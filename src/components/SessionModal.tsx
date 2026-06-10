@@ -137,6 +137,20 @@ function QuizView({
       {/* Question */}
       <p className="quiz-question">{quiz.question}</p>
 
+      {/* Code snippet (analysis questions) */}
+      {quiz.codeSnippet && (
+        <div className="quiz-code-snippet">
+          <SyntaxHighlighter
+            style={vscDarkPlus}
+            language="javascript"
+            PreTag="div"
+            customStyle={{ borderRadius: '0.75rem', fontSize: '0.82rem', margin: '0' }}
+          >
+            {quiz.codeSnippet}
+          </SyntaxHighlighter>
+        </div>
+      )}
+
       {/* Options */}
       <div className="quiz-options">
         {quiz.options.map((opt, i) => {

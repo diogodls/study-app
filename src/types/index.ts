@@ -26,6 +26,7 @@ export type {
 
 export type Quiz = {
   question: string;
+  codeSnippet?: string; // optional code block shown above options (for analysis questions)
   options: [string, string, string, string];
   correctIndex: 0 | 1 | 2 | 3;
   explanation: string;
