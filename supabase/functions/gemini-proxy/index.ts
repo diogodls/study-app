@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-type RequestType = 'lesson' | 'lab' | 'practice' | 'master' | 'flashcards' | 'evaluate-teachback';
+type RequestType = 'lesson' | 'lab' | 'practice' | 'master' | 'flashcards' | 'daily-challenge' | 'evaluate-teachback';
 type Depth = 'learn' | 'deepen' | 'master';
 type Language = 'en' | 'pt-BR';
 
@@ -103,6 +103,23 @@ Rules:
 - no simple recall questions`;
 }
 
+function dailyChallengePrompt(topic: string, language: Language) {
+  return `You are DevQuest AI. ${languageInstruction(language)} Generate today's practical coding challenge about: ${topic}
+Respond with ONLY valid JSON.
+Schema:
+{
+  "title": "short daily challenge title",
+  "cheatSheet": "concise markdown refresher (250-400 words)",
+  "quizzes": [{ "question": "...", "codeSnippet": "optional", "options": ["A","B","C","D"], "correctIndex": 0, "explanation": "..." }]
+}
+Rules:
+- exactly 5 quizzes
+- at least 3 quizzes with codeSnippet
+- mix debugging, code output, application, and tradeoff questions
+- avoid simple definition recall
+- explanations must be concise and useful`;
+}
+
 function masterPrompt(topic: string, language: Language) {
   return `You are DevQuest AI. ${languageInstruction(language)} Generate a master-level speed challenge about: ${topic}
 Respond with ONLY valid JSON.
@@ -152,6 +169,7 @@ Rules:
 function buildPrompt(type: RequestType, topic: string, depth: Depth, language: Language, explanation?: string) {
   if (type === 'lab') return labPrompt(topic, language);
   if (type === 'practice') return practicePrompt(topic, language);
+  if (type === 'daily-challenge') return dailyChallengePrompt(topic, language);
   if (type === 'master') return masterPrompt(topic, language);
   if (type === 'flashcards') return flashcardsPrompt(topic, language);
   if (type === 'evaluate-teachback') return evaluatePrompt(topic, explanation ?? '', language);

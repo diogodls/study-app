@@ -10,6 +10,7 @@ import { getCompanionSpeciesStageLabel, getCosmeticItem, getGearItem } from '@/c
 import {
   generateLesson,
   generateCodingLab,
+  generateDailyChallenge,
   generatePracticeSession,
   generateMasterSession,
   evaluateTeachBack,
@@ -90,8 +91,9 @@ function hashQuestion(question: string, codeSnippet?: string) {
   return `${question.slice(0, 120)}::${(codeSnippet ?? '').slice(0, 80)}`;
 }
 
-function getPassThreshold(depth: NodeDepth, total: number, practiceMode: boolean, recoveryMode: boolean) {
+function getPassThreshold(depth: NodeDepth, total: number, practiceMode: boolean, recoveryMode: boolean, mode: SessionMode) {
   if (recoveryMode) return total;
+  if (mode === 'daily-challenge') return Math.ceil(total * 0.6);
   if (practiceMode) return Math.max(1, Math.ceil(total * 0.67));
   if (depth === 1) return 3;
   if (depth === 2) return 4;
@@ -495,6 +497,13 @@ interface SessionModalProps {
   isReplay?: boolean;
   reviewPrompt?: string;
   onReviewComplete?: () => void;
+  dailyChallengeDate?: string;
+  onDailyChallengePassed?: (score: number, total: number) => Promise<{
+    xpGained: number;
+    spGained: number;
+    xpResult: AddXpResult;
+  }>;
+  onDailyChallengeFinished?: () => void;
 }
 
 export default function SessionModal({
@@ -509,6 +518,9 @@ export default function SessionModal({
   isReplay = false,
   reviewPrompt,
   onReviewComplete,
+  dailyChallengeDate,
+  onDailyChallengePassed,
+  onDailyChallengeFinished,
 }: SessionModalProps) {
   const {
     geminiApiKey,
@@ -533,7 +545,8 @@ export default function SessionModal({
     : node ? getNodeTopic(node, nodeMode) : practiceQuestion ?? '';
   const noteContextId = `${nodeId ?? 'practice'}:${depth}:${mode}`;
   const alreadyCompleted = nodeId ? (nodeDepths[nodeId] ?? 0) >= depth : false;
-  const showLab = !practiceMode && !recoveryMode && depth === 2;
+  const dailyChallengeMode = mode === 'daily-challenge';
+  const showLab = !practiceMode && !recoveryMode && !dailyChallengeMode && depth === 2;
   const timedQuiz = mode === 'master';
 
   const [view, setView] = useState<ModalView>('loading');
@@ -562,7 +575,15 @@ export default function SessionModal({
     if (!lessonTopic) return;
     loadedRef.current = true;
 
-    const loader = mode === 'review' && nodeId
+    const loader = dailyChallengeMode && nodeId && dailyChallengeDate
+      ? getCachedContent<CheatSheetSession>(`daily:${dailyChallengeDate}:${nodeId}`, depth, 'daily-challenge', selectedModel)
+          .then(async (cached) => {
+            if (cached) return cached;
+            const generated = await generateDailyChallenge(lessonTopic, selectedModel, language);
+            await saveCachedContent(`daily:${dailyChallengeDate}:${nodeId}`, depth, 'daily-challenge', selectedModel, generated);
+            return generated;
+          })
+      : mode === 'review' && nodeId
       ? getCachedContent<CheatSheetSession>(nodeId, depth, 'review', selectedModel)
           .then(async (cached) => {
             if (cached) return cached;
@@ -591,13 +612,13 @@ export default function SessionModal({
     loader
       .then((payload) => {
         setSession(payload);
-        setView(mode === 'replay-assessment' || mode === 'master' || mode === 'review' || practiceMode || recoveryMode ? 'quiz' : 'lesson');
+        setView(mode === 'replay-assessment' || mode === 'master' || mode === 'review' || dailyChallengeMode || practiceMode || recoveryMode ? 'quiz' : 'lesson');
       })
       .catch((err: Error) => {
         setError(err);
         setView('error');
       });
-  }, [lessonTopic, practiceMode, recoveryMode, nodeId, geminiApiKey, selectedModel, language, mode, depth, nodeMode, loadAttempt]);
+  }, [lessonTopic, practiceMode, recoveryMode, dailyChallengeMode, dailyChallengeDate, nodeId, geminiApiKey, selectedModel, language, mode, depth, nodeMode, loadAttempt]);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -646,11 +667,11 @@ export default function SessionModal({
   }, []);
 
   const finalizeFailure = useCallback(async () => {
-    if (nodeId && !practiceMode && !recoveryMode) {
+    if (nodeId && !practiceMode && !recoveryMode && !dailyChallengeMode) {
       await upsertSrsSchedule(nodeId, false, depth);
     }
     setView('failure');
-  }, [nodeId, practiceMode, recoveryMode, depth]);
+  }, [nodeId, practiceMode, recoveryMode, dailyChallengeMode, depth]);
 
   const applyRewards = useCallback((teachBackScore?: number) => {
     const rewards = DEPTH_REWARDS[practiceMode || recoveryMode ? 1 : depth];
@@ -715,7 +736,7 @@ export default function SessionModal({
     const correct = selected === quiz.correctIndex;
     const timeTakenMs = Date.now() - quizState.questionStartedAt;
 
-    if (!correct) loseLife();
+    if (!correct && !dailyChallengeMode) loseLife();
     if (correct) playCorrect();
     else playWrong();
 
@@ -741,7 +762,7 @@ export default function SessionModal({
       answerSubmittingRef.current = false;
       setActionBusy(false);
     }
-  }, [session, quizState.index, quizState.selected, quizState.questionStartedAt, quizState.answered, loseLife, nodeId, depth]);
+  }, [session, quizState.index, quizState.selected, quizState.questionStartedAt, quizState.answered, loseLife, nodeId, depth, dailyChallengeMode]);
   handleCheckRef.current = handleCheck;
 
   const handleContinue = useCallback(async () => {
@@ -764,12 +785,27 @@ export default function SessionModal({
       }
 
       const finalCorrectCount = quizState.correctCount;
-      const passThreshold = getPassThreshold(depth, total, practiceMode, recoveryMode);
+      const passThreshold = getPassThreshold(depth, total, practiceMode, recoveryMode, mode);
       const passed = finalCorrectCount >= passThreshold;
 
       if (!passed) {
         await finalizeFailure();
         if (mode === 'review') onReviewComplete?.();
+        return;
+      }
+
+      if (dailyChallengeMode && onDailyChallengePassed) {
+        const reward = await onDailyChallengePassed(finalCorrectCount, total);
+        setVictory({
+          xpGained: reward.xpGained,
+          spGained: reward.spGained,
+          xpResult: reward.xpResult,
+          nodeResult: null,
+          isPerfect: finalCorrectCount === total,
+          lifeRecovered: false,
+        });
+        setView('victory');
+        onDailyChallengeFinished?.();
         return;
       }
 
@@ -787,7 +823,7 @@ export default function SessionModal({
       continueSubmittingRef.current = false;
       setActionBusy(false);
     }
-  }, [session, quizState.index, quizState.correctCount, depth, practiceMode, recoveryMode, finalizeFailure, nodeId, mode, applyRewards, onReviewComplete]);
+  }, [session, quizState.index, quizState.correctCount, depth, practiceMode, recoveryMode, mode, finalizeFailure, dailyChallengeMode, onDailyChallengePassed, onDailyChallengeFinished, nodeId, applyRewards, onReviewComplete]);
 
   const handleLabComplete = useCallback(() => {
     setLabCompletedThisRun(true);
@@ -878,7 +914,11 @@ export default function SessionModal({
             <ResultView
               type="failure"
               title="Assessment failed"
-              description={recoveryMode ? 'A perfect run is required to recover a life.' : 'You lost a life, but you can retry this level immediately.'}
+              description={recoveryMode
+                ? 'A perfect run is required to recover a life.'
+                : dailyChallengeMode
+                  ? 'Score at least 3/5. You can retry today without losing lives.'
+                  : 'You lost a life, but you can retry this level immediately.'}
               primaryLabel="Retry"
               onPrimary={() => {
                 setQuizState({ index: 0, selected: null, answered: 'idle', wrongCount: 0, correctCount: 0, questionStartedAt: Date.now() });

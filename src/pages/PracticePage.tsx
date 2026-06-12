@@ -13,7 +13,13 @@ import { LEARNING_PATHS, getNode } from '@/config/paths';
 import SessionModal from '@/components/SessionModal';
 import SrsReviewSection from '@/components/SrsReviewSection';
 import FlashcardReviewModal from '@/components/FlashcardReviewModal';
+import DailyChallengeCard from '@/components/DailyChallengeCard';
 import { buildReviewPrompt, type DueReview } from '@/services/srsService';
+import {
+  completeDailyChallenge,
+  startDailyChallenge,
+  type DailyChallenge,
+} from '@/services/dailyChallengeService';
 import type { NodeDepth, SessionMode } from '@/types';
 
 document.title = 'Practice Arena — DevQuest';
@@ -93,7 +99,7 @@ function LivesRow({ lives, max = 5 }: { lives: number; max?: number }) {
 export default function PracticePage() {
   document.title = 'Practice Arena — DevQuest';
 
-  const { lives, completedNodes } = useGameState();
+  const { lives, completedNodes, applyCloudRewardTotals } = useGameState();
 
   const [input, setInput] = useState('');
   const [inputError, setInputError] = useState('');
@@ -108,9 +114,11 @@ export default function PracticePage() {
     depth?: NodeDepth;
     mode?: SessionMode;
     reviewPrompt?: string;
+    dailyChallengeDate?: string;
   } | null>(null);
   const [flashcardReview, setFlashcardReview] = useState<DueReview | null>(null);
   const [reviewRefreshKey, setReviewRefreshKey] = useState(0);
+  const [dailyRefreshKey, setDailyRefreshKey] = useState(0);
 
   const suggestions = useMemo(() => getRandomTopics(6), []);
   const hasCompletedNodes = completedNodes.length > 0;
@@ -179,6 +187,30 @@ export default function PracticePage() {
     setModalOpen(true);
   }, []);
 
+  const handleStartDailyChallenge = useCallback(async (challenge: DailyChallenge) => {
+    await startDailyChallenge(challenge.date);
+    setModalProps({
+      nodeId: challenge.nodeId,
+      practiceMode: false,
+      recoveryMode: false,
+      depth: challenge.depth,
+      mode: 'daily-challenge',
+      dailyChallengeDate: challenge.date,
+    });
+    setModalOpen(true);
+  }, []);
+
+  const handleDailyChallengePassed = useCallback(async (score: number, total: number) => {
+    if (!modalProps?.dailyChallengeDate) throw new Error('Daily challenge date is missing');
+    const reward = await completeDailyChallenge(modalProps.dailyChallengeDate, score, total);
+    const xpResult = applyCloudRewardTotals(reward.totalXp, reward.totalSp);
+    return {
+      xpGained: reward.xpAwarded,
+      spGained: reward.spAwarded,
+      xpResult,
+    };
+  }, [modalProps?.dailyChallengeDate, applyCloudRewardTotals]);
+
   // ── Get recovery node title for UI ────────────────────────────
   const getRecoveryLabel = () => {
     if (!hasCompletedNodes) return null;
@@ -243,6 +275,11 @@ export default function PracticePage() {
         <h1 className="practice-title">Practice Arena</h1>
         <p className="practice-subtitle">Ask anything. Learn something. Earn XP.</p>
       </div>
+
+      <DailyChallengeCard
+        refreshKey={dailyRefreshKey}
+        onStart={(challenge) => void handleStartDailyChallenge(challenge)}
+      />
 
       <SrsReviewSection
         refreshKey={reviewRefreshKey}
@@ -342,6 +379,9 @@ export default function PracticePage() {
           mode={modalProps.mode}
           reviewPrompt={modalProps.reviewPrompt}
           onReviewComplete={refreshReviews}
+          dailyChallengeDate={modalProps.dailyChallengeDate}
+          onDailyChallengePassed={modalProps.mode === 'daily-challenge' ? handleDailyChallengePassed : undefined}
+          onDailyChallengeFinished={() => setDailyRefreshKey((current) => current + 1)}
         />
       )}
 

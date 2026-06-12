@@ -387,6 +387,7 @@ type GameContextValue = GameState & {
   unlockedBadgeIds: string[];
   cloudLoading: boolean;
   addXp: (amount: number) => AddXpResult;
+  applyCloudRewardTotals: (totalXp: number, totalStudyPoints: number) => AddXpResult;
   addStudyPoints: (amount: number) => void;
   spendCoins: (amount: number) => boolean;
   loseLife: () => void;
@@ -507,6 +508,34 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     setState((current) => ({
       ...current,
       xp: newXp,
+      avatarTier: newTier,
+      companion: { ...current.companion, evolutionStage: newStage },
+    }));
+
+    return {
+      leveledUp: newLevel > prevLevel,
+      prevLevel,
+      newLevel,
+      tierChanged: newTier > prevTier,
+      newTier,
+      companionEvolved: newStage > prevStage,
+      newCompanionStage: newStage,
+    };
+  }, []);
+
+  const applyCloudRewardTotals = useCallback((totalXp: number, totalStudyPoints: number): AddXpResult => {
+    const prev = stateRef.current;
+    const prevLevel = getLevel(prev.xp);
+    const newLevel = getLevel(totalXp);
+    const prevTier = getAvatarTier(prevLevel);
+    const newTier = getAvatarTier(newLevel);
+    const prevStage = getCompanionStage(prevLevel);
+    const newStage = getCompanionStage(newLevel);
+
+    setState((current) => ({
+      ...current,
+      xp: totalXp,
+      studyPoints: totalStudyPoints,
       avatarTier: newTier,
       companion: { ...current.companion, evolutionStage: newStage },
     }));
@@ -791,6 +820,8 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
       supabase.from('user_master_rewards').delete().eq('user_id', userId),
       supabase.from('user_quiz_results').delete().eq('user_id', userId),
       supabase.from('user_srs_schedule').delete().eq('user_id', userId),
+      supabase.from('user_daily_challenges').delete().eq('user_id', userId),
+      supabase.from('user_daily_challenge_stats').delete().eq('user_id', userId),
       supabase.from('user_node_depths').delete().eq('user_id', userId),
       supabase.from('user_rewards').delete().eq('user_id', userId),
       supabase.from('user_gear').delete().eq('user_id', userId),
@@ -809,6 +840,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     unlockedBadgeIds,
     cloudLoading,
     addXp,
+    applyCloudRewardTotals,
     addStudyPoints,
     spendCoins,
     loseLife,

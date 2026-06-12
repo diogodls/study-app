@@ -91,6 +91,7 @@ export type NodeDepthMode = 'learn' | 'deepen' | 'master';
 export type SessionMode =
   | NodeDepthMode
   | 'review'
+  | 'daily-challenge'
   | 'replay-view'
   | 'replay-assessment';
 

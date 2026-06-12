@@ -1941,6 +1941,61 @@ code, pre {
 }
 .practice-subtitle { font-size: 0.875rem; color: var(--text-muted); margin: 0; }
 
+.daily-challenge-card {
+  margin-bottom: 1.25rem;
+  padding: 1.25rem;
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 18%, transparent), transparent 45%),
+    var(--surface);
+}
+
+.daily-challenge-card__heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.daily-challenge-card__eyebrow {
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.daily-challenge-card h2 { margin: 0.25rem 0; font-size: 1.15rem; }
+.daily-challenge-card p { margin: 0; color: var(--text-muted); font-size: 0.82rem; }
+.daily-challenge-card__streak { font-size: 1.1rem; white-space: nowrap; }
+
+.daily-challenge-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.daily-challenge-card__meta span {
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.daily-challenge-card__complete {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: var(--success);
+}
+
+.daily-challenge-card__complete span { color: var(--text-muted); font-size: 0.8rem; }
+.daily-challenge-card--completed { border-color: color-mix(in srgb, var(--success) 55%, var(--border)); }
+.daily-challenge-card--loading,
+.daily-challenge-card--error { color: var(--text-muted); }
+
 /* -- Input card -------------------------------------------- */
 .practice-input-card {
   display: flex;

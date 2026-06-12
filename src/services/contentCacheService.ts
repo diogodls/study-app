@@ -1,6 +1,6 @@
 import { supabase } from '@/services/supabaseClient';
 
-type ContentType = 'lesson' | 'lab' | 'master' | 'flashcards' | 'review';
+type ContentType = 'lesson' | 'lab' | 'master' | 'flashcards' | 'review' | 'daily-challenge';
 type NodeDepthCache = 0 | 1 | 2 | 3;
 
 export async function getCachedContent<T>(
