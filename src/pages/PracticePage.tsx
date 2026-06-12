@@ -11,6 +11,10 @@ import { useState, useMemo, useCallback } from 'react';
 import { useGameState } from '@/context/GameStateContext';
 import { LEARNING_PATHS, getNode } from '@/config/paths';
 import SessionModal from '@/components/SessionModal';
+import SrsReviewSection from '@/components/SrsReviewSection';
+import FlashcardReviewModal from '@/components/FlashcardReviewModal';
+import { buildReviewPrompt, type DueReview } from '@/services/srsService';
+import type { NodeDepth, SessionMode } from '@/types';
 
 document.title = 'Practice Arena — DevQuest';
 
@@ -101,7 +105,12 @@ export default function PracticePage() {
     practiceQuestion?: string;
     practiceMode: boolean;
     recoveryMode: boolean;
+    depth?: NodeDepth;
+    mode?: SessionMode;
+    reviewPrompt?: string;
   } | null>(null);
+  const [flashcardReview, setFlashcardReview] = useState<DueReview | null>(null);
+  const [reviewRefreshKey, setReviewRefreshKey] = useState(0);
 
   const suggestions = useMemo(() => getRandomTopics(6), []);
   const hasCompletedNodes = completedNodes.length > 0;
@@ -152,6 +161,22 @@ export default function PracticePage() {
   const closeModal = useCallback(() => {
     setModalOpen(false);
     setModalProps(null);
+  }, []);
+
+  const refreshReviews = useCallback(() => {
+    setReviewRefreshKey((current) => current + 1);
+  }, []);
+
+  const handleStartSrsQuiz = useCallback((review: DueReview) => {
+    setModalProps({
+      nodeId: review.nodeId,
+      practiceMode: false,
+      recoveryMode: false,
+      depth: review.depth,
+      mode: 'review',
+      reviewPrompt: buildReviewPrompt(review),
+    });
+    setModalOpen(true);
   }, []);
 
   // ── Get recovery node title for UI ────────────────────────────
@@ -218,6 +243,12 @@ export default function PracticePage() {
         <h1 className="practice-title">Practice Arena</h1>
         <p className="practice-subtitle">Ask anything. Learn something. Earn XP.</p>
       </div>
+
+      <SrsReviewSection
+        refreshKey={reviewRefreshKey}
+        onStartQuiz={handleStartSrsQuiz}
+        onStartFlashcards={setFlashcardReview}
+      />
 
       {/* ── Question input ─────────────────────────────────── */}
       <div className="card practice-input-card">
@@ -307,6 +338,18 @@ export default function PracticePage() {
           practiceMode={modalProps.practiceMode}
           recoveryMode={modalProps.recoveryMode}
           onRetryRecovery={modalProps.recoveryMode ? handleRetryRecovery : undefined}
+          depth={modalProps.depth}
+          mode={modalProps.mode}
+          reviewPrompt={modalProps.reviewPrompt}
+          onReviewComplete={refreshReviews}
+        />
+      )}
+
+      {flashcardReview && (
+        <FlashcardReviewModal
+          review={flashcardReview}
+          onClose={() => setFlashcardReview(null)}
+          onComplete={refreshReviews}
         />
       )}
     </div>

@@ -2,8 +2,9 @@ import { useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useGameState } from '@/context/GameStateContext';
 import { LEARNING_PATHS, isNodeUnlocked } from '@/config/paths';
-import type { SkillNode, LearningPath } from '@/types';
+import type { SkillNode, LearningPath, NodeDepth, SessionMode } from '@/types';
 import SessionModal from '@/components/SessionModal';
+import NodeDepthModal from '@/components/NodeDepthModal';
 
 document.title = 'Skill Tree — DevQuest';
 
@@ -28,12 +29,14 @@ type NodeState = 'completed' | 'available' | 'locked';
 function NodeCard({
   node,
   state,
+  depth,
   pathColor,
   onClick,
   index,
 }: {
   node: SkillNode;
   state: NodeState;
+  depth: NodeDepth;
   pathColor: string;
   onClick: () => void;
   index: number;
@@ -60,6 +63,11 @@ function NodeCard({
           <span className="node-card__title">{node.title}</span>
           <span className="node-card__desc">{node.description}</span>
           <span className="node-card__time">~{node.estimatedMinutes} min</span>
+          <span className="node-card__depth-dots" aria-label={`Depth ${depth} of 3`}>
+            {[1, 2, 3].map((value) => (
+              <span key={value} className={`node-card__depth-dot ${depth >= value ? 'node-card__depth-dot--on' : ''}`} />
+            ))}
+          </span>
         </div>
         <span className="node-card__status" aria-hidden="true">{statusIcon}</span>
       </button>
@@ -97,7 +105,7 @@ function PathTab({
 // Main page
 // ─────────────────────────────────────────────────────────────
 export default function SkillTreePage() {
-  const { completedNodes, lives, selectedPathId: savedPathId } = useGameState();
+  const { completedNodes, nodeDepths, completedLabs, lives, selectedPathId: savedPathId } = useGameState();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -108,6 +116,7 @@ export default function SkillTreePage() {
 
   const [selectedPathId, setSelectedPathId] = useState(initialPathId);
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
+  const [sessionConfig, setSessionConfig] = useState<{ nodeId: string; depth: NodeDepth; mode: SessionMode; isReplay: boolean } | null>(null);
 
   const path = LEARNING_PATHS.find((p) => p.id === selectedPathId)!;
 
@@ -168,6 +177,7 @@ export default function SkillTreePage() {
               key={node.id}
               node={node}
               state={state}
+              depth={nodeDepths[node.id] ?? 0}
               pathColor={path.color}
               index={idx}
               onClick={() => {
@@ -180,10 +190,32 @@ export default function SkillTreePage() {
 
       {/* ── Session modal ────────────────────────────────── */}
       {activeNodeId && (
-        <SessionModal
-          nodeId={activeNodeId}
-          pathId={selectedPathId}
+        <NodeDepthModal
+          nodeTitle={path.nodes.find((node) => node.id === activeNodeId)?.title ?? 'Node'}
+          currentDepth={nodeDepths[activeNodeId] ?? 0}
+          completedLab={completedLabs.includes(activeNodeId)}
           onClose={() => setActiveNodeId(null)}
+          onStart={(depthMode, replay, replayMode) => {
+            const depthMap: Record<'learn' | 'deepen' | 'master', NodeDepth> = { learn: 1, deepen: 2, master: 3 };
+            setSessionConfig({
+              nodeId: activeNodeId,
+              depth: depthMap[depthMode],
+              mode: replay ? (replayMode ?? 'replay-assessment') : depthMode,
+              isReplay: replay,
+            });
+            setActiveNodeId(null);
+          }}
+        />
+      )}
+
+      {sessionConfig && (
+        <SessionModal
+          nodeId={sessionConfig.nodeId}
+          pathId={selectedPathId}
+          depth={sessionConfig.depth}
+          mode={sessionConfig.mode}
+          isReplay={sessionConfig.isReplay}
+          onClose={() => setSessionConfig(null)}
         />
       )}
     </div>

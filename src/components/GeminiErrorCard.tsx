@@ -16,6 +16,16 @@ type ErrorCase = {
 function classifyError(error: Error): ErrorCase {
   const msg = error.message.toLowerCase();
 
+  if (msg.includes('client_rate_limit')) {
+    const seconds = error.message.split(':')[1] ?? 'a few';
+    return {
+      Icon: RefreshCw,
+      title: 'Slow Down a Moment',
+      message: `Too many AI requests were started together. Try again in ${seconds} seconds.`,
+      cta: 'retry',
+    };
+  }
+
   if (msg.includes('api key') || msg.includes('no api key') || msg.includes('missing key')) {
     return {
       Icon: KeyRound,

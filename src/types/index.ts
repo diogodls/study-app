@@ -25,7 +25,9 @@ export type {
 // ─── Gemini API Response Shapes ───────────────────────────
 
 export type Quiz = {
+  type?: 'mcq' | 'truefalse' | 'fill' | 'output';
   question: string;
+  questionHash?: string;
   codeSnippet?: string; // optional code block shown above options (for analysis questions)
   options: [string, string, string, string];
   correctIndex: 0 | 1 | 2 | 3;
@@ -46,6 +48,12 @@ export type CodingLab = {
   testCode: string;        // Node.js assert-based tests
   fileName: string;        // e.g. "circularQueue.js"
   language: CodingLabLanguage;
+};
+
+export type Flashcard = {
+  front: string;
+  back: string;
+  codeSnippet?: string;
 };
 
 // ─── Shop / Reward Types ──────────────────────────────────
@@ -77,6 +85,14 @@ export type Companion = {
 // ─── Settings ─────────────────────────────────────────────
 
 export type GeminiModel = 'gemini-3-flash-preview' | 'gemini-2.5-flash' | 'gemini-2.5-pro';
+export type ContentLanguage = 'en' | 'pt-BR';
+export type NodeDepth = 0 | 1 | 2 | 3;
+export type NodeDepthMode = 'learn' | 'deepen' | 'master';
+export type SessionMode =
+  | NodeDepthMode
+  | 'review'
+  | 'replay-view'
+  | 'replay-assessment';
 
 // ─── Full Game State ──────────────────────────────────────
 
@@ -88,8 +104,11 @@ export type GameState = {
   streak: number;              // current consecutive study days
   longestStreak: number;       // all-time record for badges
   lastStudyDate: string | null;// YYYY-MM-DD ISO date
+  nodeDepths: Record<string, NodeDepth>;
   completedNodes: string[];    // skill node IDs
   completedLabs: string[];     // coding lab node IDs
+  masteredNodeCount: number;
+  claimedMasterRewardMilestones: number[];
   perfectLessons: number;      // lessons completed with zero errors
   lifeRecoveries: number;      // times recovered from 0 lives
 
@@ -100,6 +119,7 @@ export type GameState = {
   // Settings
   geminiApiKey: string;
   selectedModel: GeminiModel;
+  language: ContentLanguage;
   soundEnabled: boolean;
 
   // Character
@@ -130,6 +150,8 @@ export type AddXpResult = {
 export type CompleteNodeResult = {
   newlyUnlockedBadges: string[];
   newlyUnlockedGear: string[];
+  newlyUnlockedCosmetics: string[];
+  claimedMasterMilestone: number | null;
 };
 
 // ─── Context Value ────────────────────────────────────────

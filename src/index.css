@@ -1,5 +1,5 @@
-/* ============================================================
-   DevQuest Design System — "Friendly Cozy Dark"
+﻿/* ============================================================
+   DevQuest Design System â€” "Friendly Cozy Dark"
    ============================================================ */
 
 /* ------------------------------------------------------------
@@ -7,7 +7,7 @@
    ------------------------------------------------------------ */
 
 /* ------------------------------------------------------------
-   2. CSS Custom Properties — Dark Mode (default)
+   2. CSS Custom Properties â€” Dark Mode (default)
    ------------------------------------------------------------ */
 :root {
   /* Backgrounds */
@@ -17,12 +17,12 @@
   --bg-card-hover: #302B48;
   --bg-overlay:    rgba(14, 12, 22, 0.85);
 
-  /* Brand accent — warm amber/orange */
+  /* Brand accent â€” warm amber/orange */
   --accent:        hsl(32, 95%, 62%);
   --accent-dim:    hsl(32, 70%, 48%);
   --accent-glow:   hsla(32, 95%, 62%, 0.25);
 
-  /* Secondary accent — soft purple */
+  /* Secondary accent â€” soft purple */
   --accent-alt:    hsl(260, 65%, 68%);
   --accent-alt-dim:hsl(260, 50%, 52%);
   --accent-alt-glow:hsla(260, 65%, 68%, 0.2);
@@ -345,7 +345,7 @@ code, pre {
   cursor: not-allowed;
 }
 
-/* 3D tactile button — primary */
+/* 3D tactile button â€” primary */
 .btn-primary {
   background: var(--accent);
   color: var(--text-inverse);
@@ -893,6 +893,166 @@ code, pre {
   transform: scale(1.1);
 }
 
+/* Spaced-repetition reviews */
+.srs-section {
+  margin: 1.25rem 0;
+}
+
+.srs-section__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.srs-section__header h2 {
+  margin: 0.15rem 0 0;
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+}
+
+.srs-section__eyebrow {
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.srs-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text-muted);
+}
+
+.srs-empty strong {
+  color: var(--text);
+}
+
+.srs-empty p {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+}
+
+.srs-review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.srs-review-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.srs-review-card__top {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.srs-review-card__icon {
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.srs-review-card__top p,
+.srs-review-card__focus {
+  margin: 0.2rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.srs-review-card__focus {
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+}
+
+.srs-review-card__actions,
+.flashcard-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.flashcard-modal {
+  min-height: min(680px, 88dvh);
+}
+
+.flashcard-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.flashcard-progress .quiz-progress__track {
+  flex: 1;
+}
+
+.flashcard {
+  width: 100%;
+  min-height: 300px;
+  padding: 1.5rem;
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 18%, transparent), transparent 45%),
+    var(--bg-primary);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.flashcard--revealed {
+  border-color: var(--accent);
+  cursor: default;
+}
+
+.flashcard__label {
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.flashcard strong {
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.flashcard small {
+  color: var(--text-faint);
+}
+
+.flashcard pre {
+  width: 100%;
+  margin: 0;
+  padding: 0.75rem;
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+}
+
+.flashcard-complete {
+  align-items: center;
+  justify-content: center;
+  min-height: 360px;
+  text-align: center;
+}
+
 /* ------------------------------------------------------------
    19. XP / Progress Header Components
    ------------------------------------------------------------ */
@@ -1193,7 +1353,7 @@ code, pre {
 }
 
 /* =============================================================
-   M4 � Skill Tree & Session Modal
+   M4 — Skill Tree & Session Modal
    ============================================================= */
 
 /* Path color tokens */
@@ -1709,7 +1869,7 @@ code, pre {
 }
 
 /* =============================================================
-   M5 � Practice Arena & Life Recovery
+   M5 — Practice Arena & Life Recovery
    ============================================================= */
 
 /* -- Recovery banners -------------------------------------- */
@@ -1901,7 +2061,7 @@ code, pre {
 }
 
 /* =============================================================
-   M6 � Shop & Dopamine Timer
+   M6 — Shop & Dopamine Timer
    ============================================================= */
 
 /* -- Shop tabs --------------------------------------------- */
@@ -2282,7 +2442,7 @@ code, pre {
 .timer-actions { width: 100%; }
 
 /* =============================================================
-   M7 � Onboarding Flow
+   M7 — Onboarding Flow
    ============================================================= */
 
 /* -- Shell ------------------------------------------------- */
@@ -2362,7 +2522,7 @@ code, pre {
   font-size: 1rem;
 }
 
-/* -- Step 1 � Welcome -------------------------------------- */
+/* -- Step 1 — Welcome -------------------------------------- */
 .step-welcome {
   align-items: center;
   text-align: center;
@@ -2399,7 +2559,7 @@ code, pre {
   max-width: 340px;
 }
 
-/* -- Step 2 � Avatar grid ---------------------------------- */
+/* -- Step 2 — Avatar grid ---------------------------------- */
 .avatar-grid {
   display: flex;
   flex-direction: column;
@@ -2448,7 +2608,7 @@ code, pre {
   100% { transform: scale(1); }
 }
 
-/* -- Step 3 � Name ----------------------------------------- */
+/* -- Step 3 — Name ----------------------------------------- */
 .onboarding-name-wrap { display: flex; flex-direction: column; gap: 0.375rem; }
 .onboarding-name-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
 .onboarding-name-input {
@@ -2475,7 +2635,7 @@ code, pre {
 .onboarding-name-error { color: var(--error); }
 .onboarding-name-count { color: var(--text-faint, var(--text-muted)); }
 
-/* -- Step 4 � API Key -------------------------------------- */
+/* -- Step 4 — API Key -------------------------------------- */
 .onboarding-apikey-wrap { display: flex; flex-direction: column; gap: 0.625rem; }
 .onboarding-apikey-row { display: flex; gap: 0.5rem; align-items: center; }
 .onboarding-apikey-row .onboarding-name-input { flex: 1; }
@@ -2493,7 +2653,7 @@ code, pre {
 }
 .onboarding-link { color: var(--accent); text-decoration: underline; }
 
-/* -- Step 5 � Path selection ------------------------------- */
+/* -- Step 5 — Path selection ------------------------------- */
 .path-selection-grid {
   display: flex;
   flex-direction: column;
@@ -2556,7 +2716,7 @@ code, pre {
   flex-shrink: 0;
 }
 
-/* -- Step 6 � Companion ------------------------------------ */
+/* -- Step 6 — Companion ------------------------------------ */
 .step-companion { align-items: center; text-align: center; }
 .companion-egg-wrap {
   position: relative;
@@ -3063,4 +3223,98 @@ body.session-modal-open .app-header {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   overflow: hidden;
+}
+
+.node-card__depth-dots {
+  display: inline-flex;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+
+.node-card__depth-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.node-card__depth-dot--on {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.depth-modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.depth-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+}
+
+.depth-card--available {
+  border-color: var(--accent);
+}
+
+.depth-card--done {
+  border-color: var(--success);
+  background: linear-gradient(180deg, var(--bg-card), var(--success-bg));
+}
+
+.depth-card__header,
+.depth-card__actions,
+.teachback-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.depth-card__meta p,
+.depth-card__locked-reason,
+.depth-card__lab {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.speed-quiz-timer {
+  align-self: flex-start;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-full);
+  background: var(--warning-bg);
+  color: var(--warning);
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.teachback-input {
+  width: 100%;
+  min-height: 180px;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text);
+  resize: vertical;
+}
+
+.teachback-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.teachback-feedback {
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
 }

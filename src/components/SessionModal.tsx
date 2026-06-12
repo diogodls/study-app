@@ -5,48 +5,66 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import confetti from 'canvas-confetti';
 
 import { useGameState } from '@/context/GameStateContext';
-import { getNode } from '@/config/paths';
-import { XP_REWARDS, SP_REWARDS } from '@/config/levels';
-import { getCompanionSpeciesStageLabel, getGearItem } from '@/config/character';
+import { getNode, getNodeTopic } from '@/config/paths';
+import { getCompanionSpeciesStageLabel, getCosmeticItem, getGearItem } from '@/config/character';
 import {
   generateLesson,
   generateCodingLab,
   generatePracticeSession,
+  generateMasterSession,
+  evaluateTeachBack,
 } from '@/services/geminiService';
+import { saveQuizResult } from '@/services/quizResultsService';
+import { upsertSrsSchedule } from '@/services/srsService';
 import { playCorrect, playWrong, playLevelUp, playCoins } from '@/services/soundService';
 import { getCachedContent, saveCachedContent } from '@/services/contentCacheService';
 import GeminiLoadingState from '@/components/GeminiLoadingState';
 import GeminiErrorCard from '@/components/GeminiErrorCard';
 import { AvatarSprite, CompanionDisplay } from '@/components/PixelSprites';
 import ContentNotes from '@/components/ContentNotes';
-import type { CheatSheetSession, CodingLab, AddXpResult, CompleteNodeResult } from '@/types';
+import type {
+  CheatSheetSession,
+  CodingLab,
+  AddXpResult,
+  CompleteNodeResult,
+  NodeDepth,
+  SessionMode,
+  NodeDepthMode,
+} from '@/types';
 
-// ─────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────
-
-type ModalView = 'loading' | 'error' | 'lesson' | 'quiz' | 'lab' | 'victory';
+type ModalView = 'loading' | 'error' | 'lesson' | 'quiz' | 'lab' | 'teachback' | 'victory' | 'failure';
 type AnswerState = 'idle' | 'correct' | 'wrong';
 
-interface QuizState {
+type QuizState = {
   index: number;
   selected: number | null;
   answered: AnswerState;
-  wrongCount: number; // total wrong answers this session
-}
+  wrongCount: number;
+  correctCount: number;
+  questionStartedAt: number;
+};
 
-interface VictoryData {
+type VictoryData = {
   xpGained: number;
   spGained: number;
   xpResult: AddXpResult;
   nodeResult: CompleteNodeResult | null;
   isPerfect: boolean;
   lifeRecovered: boolean;
-}
+  teachBackScore?: number;
+};
 
-// ─────────────────────────────────────────────────────────────
-// Markdown renderer with syntax highlighting
-// ─────────────────────────────────────────────────────────────
+const DEPTH_REWARDS: Record<NodeDepth, { xp: number; sp: number; perfectBonusXp: number }> = {
+  0: { xp: 0, sp: 0, perfectBonusXp: 0 },
+  1: { xp: 50, sp: 15, perfectBonusXp: 30 },
+  2: { xp: 100, sp: 30, perfectBonusXp: 80 },
+  3: { xp: 150, sp: 50, perfectBonusXp: 120 },
+};
+
+const LAB_BONUS = { xp: 500, sp: 100 };
+const MASTER_PASS_SCORE = 0.8;
+const MASTER_TEACHBACK_MIN = 7;
+const QUIZ_TIME_LIMIT_SECONDS = 15;
 
 const mdComponents = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -63,29 +81,40 @@ const mdComponents = {
         {String(children).replace(/\n$/, '')}
       </SyntaxHighlighter>
     ) : (
-      <code className="inline-code" {...props}>
-        {children}
-      </code>
+      <code className="inline-code" {...props}>{children}</code>
     );
   },
 };
 
-// ─────────────────────────────────────────────────────────────
-// Sub-components
-// ─────────────────────────────────────────────────────────────
+function hashQuestion(question: string, codeSnippet?: string) {
+  return `${question.slice(0, 120)}::${(codeSnippet ?? '').slice(0, 80)}`;
+}
+
+function getPassThreshold(depth: NodeDepth, total: number, practiceMode: boolean, recoveryMode: boolean) {
+  if (recoveryMode) return total;
+  if (practiceMode) return Math.max(1, Math.ceil(total * 0.67));
+  if (depth === 1) return 3;
+  if (depth === 2) return 4;
+  if (depth === 3) return Math.ceil(total * MASTER_PASS_SCORE);
+  return total;
+}
 
 function CheatSheetView({
   session,
   noteContextId,
+  allowQuiz,
+  allowLab,
   onStartQuiz,
   onOpenLab,
-  showLab = true,
+  onClose,
 }: {
   session: CheatSheetSession;
   noteContextId: string;
+  allowQuiz: boolean;
+  allowLab: boolean;
   onStartQuiz: () => void;
   onOpenLab: () => void;
-  showLab?: boolean;
+  onClose: () => void;
 }) {
   return (
     <div className="modal-content">
@@ -94,12 +123,9 @@ function CheatSheetView({
       </div>
       <ContentNotes contextId={noteContextId} contentType="lesson" />
       <div className="modal-actions">
-        <button id="open-lab-btn" className="btn btn-ghost" onClick={onOpenLab} hidden={!showLab}>
-          🧪 Coding Lab
-        </button>
-        <button id="start-quiz-btn" className="btn btn-primary btn-3d" onClick={onStartQuiz}>
-          Start Quizzes →
-        </button>
+        <button className="btn btn-ghost" onClick={onClose}>Close</button>
+        {allowLab && <button id="open-lab-btn" className="btn btn-ghost" onClick={onOpenLab}>?? Coding Lab</button>}
+        {allowQuiz && <button id="start-quiz-btn" className="btn btn-primary btn-3d" onClick={onStartQuiz}>Start Assessment ?</button>}
       </div>
     </div>
   );
@@ -108,12 +134,18 @@ function CheatSheetView({
 function QuizView({
   session,
   quizState,
+  timeLeft,
+  timed,
+  busy,
   onSelect,
   onCheck,
   onContinue,
 }: {
   session: CheatSheetSession;
   quizState: QuizState;
+  timeLeft: number;
+  timed: boolean;
+  busy: boolean;
   onSelect: (idx: number) => void;
   onCheck: () => void;
   onContinue: () => void;
@@ -123,82 +155,64 @@ function QuizView({
 
   return (
     <div className="modal-content">
-      {/* Progress bar */}
       <div className="quiz-progress" role="progressbar" aria-valuenow={quizState.index + 1} aria-valuemax={total}>
         <div className="quiz-progress__track">
-          <div
-            className="quiz-progress__fill"
-            style={{ width: `${((quizState.index) / total) * 100}%` }}
-          />
+          <div className="quiz-progress__fill" style={{ width: `${(quizState.index / total) * 100}%` }} />
         </div>
         <span className="quiz-progress__label">{quizState.index + 1} / {total}</span>
       </div>
 
-      {/* Question */}
+      {timed && <div className="speed-quiz-timer">? {timeLeft}s</div>}
       <p className="quiz-question">{quiz.question}</p>
 
-      {/* Code snippet (analysis questions) */}
       {quiz.codeSnippet && (
         <div className="quiz-code-snippet">
-          <SyntaxHighlighter
-            style={vscDarkPlus}
-            language="javascript"
-            PreTag="div"
-            customStyle={{ borderRadius: '0.75rem', fontSize: '0.82rem', margin: '0' }}
-          >
+          <SyntaxHighlighter style={vscDarkPlus} language="javascript" PreTag="div" customStyle={{ borderRadius: '0.75rem', fontSize: '0.82rem', margin: 0 }}>
             {quiz.codeSnippet}
           </SyntaxHighlighter>
         </div>
       )}
 
-      {/* Options */}
       <div className="quiz-options">
-        {quiz.options.map((opt, i) => {
+        {quiz.options.map((opt, index) => {
           let cls = 'quiz-option';
-          if (quizState.selected === i) {
+          if (quizState.selected === index) {
             if (quizState.answered === 'correct') cls += ' quiz-option--correct';
             else if (quizState.answered === 'wrong') cls += ' quiz-option--wrong';
             else cls += ' quiz-option--selected';
-          } else if (quizState.answered !== 'idle' && i === quiz.correctIndex) {
+          } else if (quizState.answered !== 'idle' && index === quiz.correctIndex) {
             cls += ' quiz-option--correct';
           }
           return (
             <button
-              key={i}
-              id={`quiz-option-${i}`}
+              key={index}
+              id={`quiz-option-${index}`}
               className={cls}
-              onClick={() => quizState.answered === 'idle' && onSelect(i)}
-              disabled={quizState.answered !== 'idle' && quizState.selected !== i && i !== quiz.correctIndex}
+              onClick={() => quizState.answered === 'idle' && onSelect(index)}
+              disabled={quizState.answered !== 'idle' || busy}
             >
-              <span className="quiz-option__letter">{['A', 'B', 'C', 'D'][i]}</span>
+              <span className="quiz-option__letter">{['A', 'B', 'C', 'D'][index]}</span>
               <span>{opt}</span>
             </button>
           );
         })}
       </div>
 
-      {/* Explanation */}
       {quizState.answered !== 'idle' && (
         <div className={`quiz-explanation quiz-explanation--${quizState.answered}`}>
-          <span>{quizState.answered === 'correct' ? '✅' : '❌'}</span>
+          <span>{quizState.answered === 'correct' ? '?' : '?'}</span>
           <p>{quiz.explanation}</p>
         </div>
       )}
 
-      {/* Action buttons */}
       <div className="modal-actions">
         {quizState.answered === 'idle' ? (
-          <button
-            id="check-answer-btn"
-            className="btn btn-primary btn-3d"
-            disabled={quizState.selected === null}
-            onClick={onCheck}
-          >
-            Check Answer
+          <button id="check-answer-btn" className="btn btn-primary btn-3d" disabled={quizState.selected === null || busy} onClick={onCheck}>
+            {busy ? 'Checking...' : 'Check Answer'}
           </button>
         ) : (
-          <button id="continue-btn" className="btn btn-primary btn-3d" onClick={onContinue}>
-            {quizState.index < total - 1 ? 'Continue →' : 'See Results →'}
+          <button id="continue-btn" className="btn btn-primary btn-3d" disabled={busy} onClick={onContinue}>
+            {busy ? 'Saving...' : quizState.index < total - 1 ? 'Continue ?' : 'Finish ?'}
           </button>
         )}
       </div>
@@ -206,45 +220,100 @@ function QuizView({
   );
 }
 
+function TeachBackView({
+  topic,
+  model,
+  language,
+  onSubmit,
+  onBack,
+}: {
+  topic: string;
+  model: string;
+  language: 'en' | 'pt-BR';
+  onSubmit: (score: number) => void;
+  onBack: () => void;
+}) {
+  const [text, setText] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState<{ score: number; summary: string; missingConcepts: string[] } | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+
+  const handleSubmit = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await evaluateTeachBack(topic, text, model, language);
+      setFeedback(result);
+      if (result.score >= MASTER_TEACHBACK_MIN) onSubmit(result.score);
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setLoading(false);
+    }
+  }, [topic, text, model, language, onSubmit]);
+
+  return (
+    <div className="modal-content">
+      <h3 className="modal-section-title">Teach-Back</h3>
+      <p className="modal-subtitle">Explain the concept in your own words (minimum 50 words).</p>
+      <textarea id="teachback-input" className="teachback-input" value={text} onChange={(event) => setText(event.target.value)} rows={8} />
+      {feedback && (
+        <div className="teachback-feedback">
+          <strong>Score: {feedback.score}/10</strong>
+          <p>{feedback.summary}</p>
+          {feedback.missingConcepts.length > 0 && <p>Missing: {feedback.missingConcepts.join(', ')}</p>}
+        </div>
+      )}
+      {error && <GeminiErrorCard error={error} onRetry={handleSubmit} />}
+      <div className="modal-actions">
+        <button className="btn btn-ghost" onClick={onBack}>? Back</button>
+        <button id="submit-teachback-btn" className="btn btn-primary btn-3d" disabled={loading || text.trim().split(/\s+/).length < 50} onClick={handleSubmit}>
+          {loading ? 'Evaluating...' : 'Submit Explanation'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function CodingLabView({
   contextId,
-  completionNodeId,
   apiKey,
   model,
   geminiTopic,
+  language,
   onComplete,
   onBack,
 }: {
   contextId: string;
-  completionNodeId?: string;
   apiKey: string;
   model: string;
   geminiTopic: string;
+  language: 'en' | 'pt-BR';
   onComplete: () => void;
   onBack: () => void;
 }) {
-  const { completeLab } = useGameState();
   const [lab, setLab] = useState<CodingLab | null>(null);
   const [labError, setLabError] = useState<Error | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'instructions' | 'boilerplate' | 'tests'>('instructions');
   const [copied, setCopied] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const loadedRef = useRef(false);
 
   useEffect(() => {
     if (loadedRef.current) return;
     loadedRef.current = true;
-    getCachedContent<CodingLab>(contextId, 'lab', model)
+    getCachedContent<CodingLab>(contextId, 2, 'lab', model)
       .then(async (cached) => {
         if (cached) return cached;
-        const generated = await generateCodingLab(geminiTopic, apiKey, model);
-        await saveCachedContent(contextId, 'lab', model, generated);
+        const generated = await generateCodingLab(geminiTopic, apiKey, model, language);
+        await saveCachedContent(contextId, 2, 'lab', model, generated);
         return generated;
       })
       .then(setLab)
       .catch(setLabError)
       .finally(() => setLoading(false));
-  }, [contextId, geminiTopic, apiKey, model]);
+  }, [contextId, geminiTopic, apiKey, model, language, loadAttempt]);
 
   const copy = useCallback(async (text: string) => {
     await navigator.clipboard.writeText(text);
@@ -260,249 +329,108 @@ function CodingLabView({
     ];
     files.forEach(({ name, content }) => {
       const blob = new Blob([content], { type: 'text/plain' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = name;
-      a.click();
-      URL.revokeObjectURL(a.href);
+      const anchor = document.createElement('a');
+      anchor.href = URL.createObjectURL(blob);
+      anchor.download = name;
+      anchor.click();
+      URL.revokeObjectURL(anchor.href);
     });
   }, [lab]);
 
-  const handleComplete = useCallback(() => {
-    if (completionNodeId) completeLab(completionNodeId);
-    playCoins();
-    onComplete();
-  }, [completeLab, completionNodeId, onComplete]);
-
   if (loading) return <GeminiLoadingState message="Generating your coding lab..." />;
-  if (labError || !lab) {
-    return (
-      <GeminiErrorCard
-        error={labError}
-        onRetry={() => {
-          setLabError(null);
-          setLoading(true);
-          loadedRef.current = false;
-        }}
-      />
-    );
-  }
+  if (labError || !lab) return <GeminiErrorCard error={labError} onRetry={() => {
+    setLabError(null);
+    setLoading(true);
+    loadedRef.current = false;
+    setLoadAttempt((current) => current + 1);
+  }} />;
 
-  const tabContent = {
-    instructions: lab.instructions,
-    boilerplate: lab.boilerplateCode,
-    tests: lab.testCode,
-  };
-
-  const currentContent = activeTab === 'instructions'
-    ? tabContent.instructions
-    : activeTab === 'boilerplate'
-    ? tabContent.boilerplate
-    : tabContent.tests;
+  const currentContent = activeTab === 'instructions' ? lab.instructions : activeTab === 'boilerplate' ? lab.boilerplateCode : lab.testCode;
 
   return (
     <div className="modal-content">
       <div className="lab-tabs">
-        {(['instructions', 'boilerplate', 'tests'] as const).map((t) => (
-          <button
-            key={t}
-            id={`lab-tab-${t}`}
-            className={`lab-tab ${activeTab === t ? 'lab-tab--active' : ''}`}
-            onClick={() => setActiveTab(t)}
-          >
-            {t === 'instructions' ? '📋 Instructions' : t === 'boilerplate' ? '💻 Starter Code' : '🧪 Tests'}
+        {(['instructions', 'boilerplate', 'tests'] as const).map((tab) => (
+          <button key={tab} className={`lab-tab ${activeTab === tab ? 'lab-tab--active' : ''}`} onClick={() => setActiveTab(tab)}>
+            {tab === 'instructions' ? '?? Instructions' : tab === 'boilerplate' ? '?? Starter Code' : '?? Tests'}
           </button>
         ))}
       </div>
-
       <div className="lab-content">
         {activeTab === 'instructions' ? (
-          <div className="modal-prose">
-            <ReactMarkdown components={mdComponents}>{lab.instructions}</ReactMarkdown>
-          </div>
+          <div className="modal-prose"><ReactMarkdown components={mdComponents}>{lab.instructions}</ReactMarkdown></div>
         ) : (
-          <SyntaxHighlighter
-            style={vscDarkPlus}
-            language={lab.language || (lab.fileName.endsWith('.py') ? 'python' : lab.fileName.endsWith('.ts') ? 'typescript' : 'javascript')}
-            customStyle={{ borderRadius: '0.75rem', fontSize: '0.82rem', margin: 0, maxHeight: '50vh', overflowY: 'auto' }}
-          >
+          <SyntaxHighlighter style={vscDarkPlus} language={lab.language} customStyle={{ borderRadius: '0.75rem', fontSize: '0.82rem', margin: 0, maxHeight: '50vh', overflowY: 'auto' }}>
             {currentContent}
           </SyntaxHighlighter>
         )}
       </div>
-
       <div className="lab-toolbar">
-        <button id="copy-lab-btn" className="btn btn-ghost btn-sm" onClick={() => copy(currentContent)}>
-          {copied ? '✅ Copied!' : '📋 Copy'}
-        </button>
-        <button id="download-lab-btn" className="btn btn-ghost btn-sm" onClick={downloadFiles}>
-          ⬇️ Download Files
-        </button>
+        <button className="btn btn-ghost btn-sm" onClick={() => copy(currentContent)}>{copied ? '? Copied!' : '?? Copy'}</button>
+        <button className="btn btn-ghost btn-sm" onClick={downloadFiles}>?? Download Files</button>
       </div>
-
       <ContentNotes contextId={contextId} contentType="lab" />
-
       <div className="modal-actions">
-        <button className="btn btn-ghost" onClick={onBack}>← Back to Lesson</button>
-        <button
-          id="complete-lab-btn"
-          className="btn btn-success btn-3d"
-          onClick={handleComplete}
-        >
-          ✅ Mark Complete +500 XP
-        </button>
+        <button className="btn btn-ghost" onClick={onBack}>? Back to Lesson</button>
+        <button id="complete-lab-btn" className="btn btn-success btn-3d" onClick={onComplete}>? Mark Lab Complete</button>
       </div>
     </div>
   );
 }
 
-function LegacyVictoryView({
-  victory,
-  nodeTitle,
-  onClose,
-  onRetryRecovery,
+function ResultView({
+  type,
+  title,
+  description,
+  onPrimary,
+  onSecondary,
+  primaryLabel,
+  secondaryLabel,
 }: {
-  victory: VictoryData;
-  nodeTitle: string;
-  onClose: () => void;
-  onRetryRecovery?: () => void;
+  type: 'success' | 'failure';
+  title: string;
+  description: string;
+  primaryLabel: string;
+  onPrimary: () => void;
+  secondaryLabel?: string;
+  onSecondary?: () => void;
 }) {
-  useEffect(() => {
-    if (victory.lifeRecovered || victory.xpResult.leveledUp) {
-      confetti({ particleCount: 120, spread: 80, origin: { y: 0.5 } });
-    } else {
-      confetti({ particleCount: 40, spread: 60, origin: { y: 0.5 }, colors: ['#9B97B0'] });
-    }
-    if (victory.xpResult.leveledUp) playLevelUp();
-    else playCoins();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const isFailedRecovery = onRetryRecovery && !victory.lifeRecovered;
-
   return (
     <div className="modal-content victory-screen">
-      <div className="victory-emoji" aria-hidden="true">
-        {victory.lifeRecovered ? '❤️' : isFailedRecovery ? '💔' : '🏆'}
-      </div>
-      <h2 className="victory-title">
-        {victory.lifeRecovered
-          ? 'Life Recovered!'
-          : isFailedRecovery
-          ? 'No life recovered'
-          : 'Session Complete!'}
-      </h2>
-      <p className="victory-node">{nodeTitle}</p>
-
-      {isFailedRecovery ? (
-        <div className="recovery-fail-msg">
-          You had wrong answers — a perfect run is required to recover a life. Try a different topic!
-        </div>
-      ) : (
-        <div className="victory-rewards">
-          <div className="reward-chip reward-chip--xp">
-            <span>⚡ +{victory.xpGained} XP</span>
-          </div>
-          <div className="reward-chip reward-chip--sp">
-            <span>💰 +{victory.spGained} SP</span>
-          </div>
-          {victory.lifeRecovered && (
-            <div className="reward-chip reward-chip--life">
-              <span>❤️ +1 Life</span>
-            </div>
-          )}
-          {victory.isPerfect && !victory.lifeRecovered && (
-            <div className="reward-chip reward-chip--perfect">
-              <span>⭐ Perfect!</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {victory.xpResult.leveledUp && (
-        <div className="victory-levelup">
-          🎉 Level Up! You&apos;re now Level {victory.xpResult.newLevel}
-          {victory.xpResult.tierChanged && ` — Avatar evolved to Tier ${victory.xpResult.newTier}!`}
-        </div>
-      )}
-
-      {victory.xpResult.companionEvolved && (
-        <div className="victory-companion">
-          🐣 Your companion evolved!
-        </div>
-      )}
-
-      {victory.nodeResult && victory.nodeResult.newlyUnlockedGear.length > 0 && (
-        <div className="victory-gear">
-          🎒 New gear unlocked: {victory.nodeResult.newlyUnlockedGear.join(', ')}
-        </div>
-      )}
-
+      <div className="victory-emoji">{type === 'success' ? '??' : '??'}</div>
+      <h2 className="victory-title">{title}</h2>
+      <p className="victory-node">{description}</p>
       <div className="modal-actions" style={{ justifyContent: 'center' }}>
-        {isFailedRecovery && (
-          <button id="retry-recovery-btn" className="btn btn-ghost" onClick={onRetryRecovery}>
-            Try a different topic
-          </button>
-        )}
-        <button id="back-to-map-btn" className="btn btn-primary btn-3d" onClick={onClose}>
-          {onRetryRecovery ? 'Close' : 'Back to Skill Tree →'}
-        </button>
+        {onSecondary && secondaryLabel && <button className="btn btn-ghost" onClick={onSecondary}>{secondaryLabel}</button>}
+        <button className="btn btn-primary btn-3d" onClick={onPrimary}>{primaryLabel}</button>
       </div>
     </div>
   );
 }
 
-void LegacyVictoryView;
-
-function VictoryView({
-  victory,
-  nodeTitle,
-  onClose,
-  onRetryRecovery,
-}: {
-  victory: VictoryData;
-  nodeTitle: string;
-  onClose: () => void;
-  onRetryRecovery?: () => void;
-}) {
+function VictoryView({ victory, nodeTitle, onClose }: { victory: VictoryData; nodeTitle: string; onClose: () => void }) {
   const { avatarId, equippedItems, companion, streak } = useGameState();
 
   useEffect(() => {
-    if (victory.lifeRecovered || victory.xpResult.leveledUp) {
-      confetti({ particleCount: 120, spread: 80, origin: { y: 0.5 } });
-    } else {
-      confetti({ particleCount: 40, spread: 60, origin: { y: 0.5 }, colors: ['#9B97B0'] });
-    }
+    confetti({ particleCount: 120, spread: 80, origin: { y: 0.5 } });
     if (victory.xpResult.leveledUp) playLevelUp();
     else playCoins();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [victory.xpResult.leveledUp]);
 
-  const isFailedRecovery = onRetryRecovery && !victory.lifeRecovered;
-  const unlockedGear = victory.nodeResult?.newlyUnlockedGear
-    .map((id) => getGearItem(id))
-    .filter((item): item is NonNullable<typeof item> => Boolean(item)) ?? [];
+  const unlockedGear = victory.nodeResult?.newlyUnlockedGear.map((id) => getGearItem(id)).filter(Boolean) ?? [];
+  const unlockedCosmetics = victory.nodeResult?.newlyUnlockedCosmetics.map((id) => getCosmeticItem(id)).filter(Boolean) ?? [];
 
   return (
     <div className="modal-content victory-screen">
-      <div className="victory-emoji" aria-hidden="true">
-        {victory.lifeRecovered ? '♥' : isFailedRecovery ? '×' : '🏆'}
-      </div>
-      <h2 className="victory-title">
-        {victory.lifeRecovered ? 'Life Recovered!' : isFailedRecovery ? 'No life recovered' : 'Session Complete!'}
-      </h2>
+      <div className="victory-emoji">??</div>
+      <h2 className="victory-title">Session Complete!</h2>
       <p className="victory-node">{nodeTitle}</p>
-
-      {isFailedRecovery ? (
-        <div className="recovery-fail-msg">
-          You had wrong answers. A perfect run is required to recover a life. Try a different topic!
-        </div>
-      ) : (
-        <div className="victory-rewards">
-          <div className="reward-chip reward-chip--xp"><span>⚡ +{victory.xpGained} XP</span></div>
-          <div className="reward-chip reward-chip--sp"><span>💰 +{victory.spGained} SP</span></div>
-          {victory.lifeRecovered && <div className="reward-chip reward-chip--life"><span>♥ +1 Life</span></div>}
-          {victory.isPerfect && !victory.lifeRecovered && <div className="reward-chip reward-chip--perfect"><span>★ Perfect!</span></div>}
-        </div>
-      )}
+      <div className="victory-rewards">
+        <div className="reward-chip reward-chip--xp"><span>? +{victory.xpGained} XP</span></div>
+        <div className="reward-chip reward-chip--sp"><span>?? +{victory.spGained} SP</span></div>
+        {victory.lifeRecovered && <div className="reward-chip reward-chip--life"><span>? +1 Life</span></div>}
+        {victory.teachBackScore && <div className="reward-chip reward-chip--perfect"><span>?? {victory.teachBackScore}/10</span></div>}
+      </div>
 
       {victory.xpResult.leveledUp && (
         <div className="victory-levelup">
@@ -525,7 +453,7 @@ function VictoryView({
 
       {unlockedGear.length > 0 && (
         <div className="victory-gear">
-          {unlockedGear.map((item) => (
+          {unlockedGear.map((item) => item && (
             <div key={item.id} className={`victory-gear-card victory-gear-card--${item.rarity}`}>
               <span className="victory-gear-card__art">{item.emoji}</span>
               <span className="victory-gear-card__name">{item.name}</span>
@@ -535,32 +463,38 @@ function VictoryView({
         </div>
       )}
 
+      {unlockedCosmetics.length > 0 && (
+        <div className="victory-gear">
+          {unlockedCosmetics.map((item) => item && (
+            <div key={item.id} className="victory-gear-card victory-gear-card--rare">
+              <span className="victory-gear-card__art">{item.emoji}</span>
+              <span className="victory-gear-card__name">{item.name}</span>
+              <span className="victory-gear-card__flavor">Master reward milestone unlocked</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="modal-actions" style={{ justifyContent: 'center' }}>
-        {isFailedRecovery && (
-          <button id="retry-recovery-btn" className="btn btn-ghost" onClick={onRetryRecovery}>
-            Try a different topic
-          </button>
-        )}
-        <button id="back-to-map-btn" className="btn btn-primary btn-3d" onClick={onClose}>
-          {onRetryRecovery ? 'Close' : 'Back to Skill Tree →'}
-        </button>
+        <button className="btn btn-primary btn-3d" onClick={onClose}>Back to Skill Tree ?</button>
       </div>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// Main SessionModal
-// ─────────────────────────────────────────────────────────────
-
 interface SessionModalProps {
-  nodeId?: string;           // omit for free-practice sessions
+  nodeId?: string;
   pathId?: string;
-  practiceQuestion?: string; // free-form topic — overrides node.geminiTopic
+  practiceQuestion?: string;
   onClose: () => void;
-  practiceMode?: boolean;    // no completeNode, no lab, 3 quizzes
-  recoveryMode?: boolean;    // practiceMode + gainLife only on perfect
-  onRetryRecovery?: () => void; // shown on failed recovery
+  practiceMode?: boolean;
+  recoveryMode?: boolean;
+  onRetryRecovery?: () => void;
+  depth?: NodeDepth;
+  mode?: SessionMode;
+  isReplay?: boolean;
+  reviewPrompt?: string;
+  onReviewComplete?: () => void;
 }
 
 export default function SessionModal({
@@ -570,26 +504,37 @@ export default function SessionModal({
   practiceMode = false,
   recoveryMode = false,
   onRetryRecovery,
+  depth = 1,
+  mode = 'learn',
+  isReplay = false,
+  reviewPrompt,
+  onReviewComplete,
 }: SessionModalProps) {
   const {
     geminiApiKey,
     selectedModel,
-    completedNodes,
+    language,
+    completedLabs,
+    nodeDepths,
     addXp,
     addStudyPoints,
     loseLife,
     gainLife,
-    completeNode,
+    completeDepth,
+    markDeepenLabComplete,
     incrementPerfectLessons,
     incrementLifeRecoveries,
   } = useGameState();
 
   const node = nodeId ? getNode(nodeId) : null;
-  const practiceContextId = practiceQuestion
-    ? `arena-${practiceQuestion.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 120)}`
-    : null;
-  const noteContextId = nodeId ?? practiceContextId ?? 'practice';
-  const alreadyCompleted = nodeId ? completedNodes.includes(nodeId) : false;
+  const nodeMode: NodeDepthMode = depth === 1 ? 'learn' : depth === 2 ? 'deepen' : 'master';
+  const lessonTopic = mode === 'review'
+    ? reviewPrompt ?? (node ? getNodeTopic(node, nodeMode) : practiceQuestion ?? '')
+    : node ? getNodeTopic(node, nodeMode) : practiceQuestion ?? '';
+  const noteContextId = `${nodeId ?? 'practice'}:${depth}:${mode}`;
+  const alreadyCompleted = nodeId ? (nodeDepths[nodeId] ?? 0) >= depth : false;
+  const showLab = !practiceMode && !recoveryMode && depth === 2;
+  const timedQuiz = mode === 'master';
 
   const [view, setView] = useState<ModalView>('loading');
   const [session, setSession] = useState<CheatSheetSession | null>(null);
@@ -599,39 +544,61 @@ export default function SessionModal({
     selected: null,
     answered: 'idle',
     wrongCount: 0,
+    correctCount: 0,
+    questionStartedAt: Date.now(),
   });
   const [victory, setVictory] = useState<VictoryData | null>(null);
+  const [labCompletedThisRun, setLabCompletedThisRun] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(QUIZ_TIME_LIMIT_SECONDS);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const loadedRef = useRef(false);
+  const answerSubmittingRef = useRef(false);
+  const continueSubmittingRef = useRef(false);
+  const handleCheckRef = useRef<(timedOut?: boolean) => void>(() => undefined);
 
-  // Load lesson on mount
   useEffect(() => {
     if (loadedRef.current) return;
-    const topic = practiceQuestion ?? node?.geminiTopic;
-    if (!topic) return;
+    if (!lessonTopic) return;
     loadedRef.current = true;
 
-    const loader = practiceMode || recoveryMode || !nodeId
-      ? generatePracticeSession(topic, geminiApiKey, selectedModel)
-      : getCachedContent<CheatSheetSession>(nodeId, 'lesson', selectedModel)
+    const loader = mode === 'review' && nodeId
+      ? getCachedContent<CheatSheetSession>(nodeId, depth, 'review', selectedModel)
           .then(async (cached) => {
             if (cached) return cached;
-            const generated = await generateLesson(topic, geminiApiKey, selectedModel);
-            await saveCachedContent(nodeId, 'lesson', selectedModel, generated);
+            const generated = await generatePracticeSession(lessonTopic, geminiApiKey, selectedModel, language);
+            await saveCachedContent(nodeId, depth, 'review', selectedModel, generated);
+            return generated;
+          })
+      : practiceMode || recoveryMode || !nodeId
+      ? generatePracticeSession(lessonTopic, geminiApiKey, selectedModel, language)
+      : mode === 'master'
+      ? getCachedContent<CheatSheetSession>(nodeId, 3, 'master', selectedModel)
+          .then(async (cached) => {
+            if (cached) return cached;
+            const generated = await generateMasterSession(lessonTopic, geminiApiKey, selectedModel, language);
+            await saveCachedContent(nodeId, 3, 'master', selectedModel, generated);
+            return generated;
+          })
+      : getCachedContent<CheatSheetSession>(nodeId, depth, 'lesson', selectedModel)
+          .then(async (cached) => {
+            if (cached) return cached;
+            const generated = await generateLesson(lessonTopic, geminiApiKey, selectedModel, nodeMode, language);
+            await saveCachedContent(nodeId, depth, 'lesson', selectedModel, generated);
             return generated;
           });
 
     loader
-      .then((s) => {
-        setSession(s);
-        setView('lesson');
+      .then((payload) => {
+        setSession(payload);
+        setView(mode === 'replay-assessment' || mode === 'master' || mode === 'review' || practiceMode || recoveryMode ? 'quiz' : 'lesson');
       })
       .catch((err: Error) => {
         setError(err);
         setView('error');
       });
-  }, [node, nodeId, practiceQuestion, geminiApiKey, selectedModel, practiceMode, recoveryMode]);
+  }, [lessonTopic, practiceMode, recoveryMode, nodeId, geminiApiKey, selectedModel, language, mode, depth, nodeMode, loadAttempt]);
 
-  // Lock body scroll while modal is open
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     document.body.classList.add('session-modal-open');
@@ -641,134 +608,234 @@ export default function SessionModal({
     };
   }, []);
 
+  useEffect(() => {
+    if (!timedQuiz || view !== 'quiz' || quizState.answered !== 'idle') {
+      if (timedQuiz) setTimeLeft(QUIZ_TIME_LIMIT_SECONDS);
+      return;
+    }
+
+    setTimeLeft(QUIZ_TIME_LIMIT_SECONDS);
+    const interval = setInterval(() => {
+      setTimeLeft((current) => {
+        if (current <= 1) {
+          clearInterval(interval);
+          setTimeout(() => handleCheckRef.current(true), 0);
+          return 0;
+        }
+        return current - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timedQuiz, view, quizState.index, quizState.answered]);
+
   const retry = useCallback(() => {
     setError(null);
     setView('loading');
     loadedRef.current = false;
+    setLoadAttempt((current) => current + 1);
   }, []);
 
   const handleStartQuiz = useCallback(() => {
-    setQuizState({ index: 0, selected: null, answered: 'idle', wrongCount: 0 });
+    setQuizState({ index: 0, selected: null, answered: 'idle', wrongCount: 0, correctCount: 0, questionStartedAt: Date.now() });
     setView('quiz');
   }, []);
 
-  const handleSelect = useCallback((idx: number) => {
-    setQuizState((s) => ({ ...s, selected: idx }));
+  const handleSelect = useCallback((index: number) => {
+    setQuizState((current) => ({ ...current, selected: index }));
   }, []);
 
-  const handleCheck = useCallback(() => {
-    if (!session) return;
-    const quiz = session.quizzes[quizState.index];
-    const correct = quizState.selected === quiz.correctIndex;
-
-    if (correct) {
-      playCorrect();
-      setQuizState((s) => ({ ...s, answered: 'correct' }));
-    } else {
-      playWrong();
-      loseLife();
-      setQuizState((s) => ({ ...s, answered: 'wrong', wrongCount: s.wrongCount + 1 }));
+  const finalizeFailure = useCallback(async () => {
+    if (nodeId && !practiceMode && !recoveryMode) {
+      await upsertSrsSchedule(nodeId, false, depth);
     }
-  }, [session, quizState.index, quizState.selected, loseLife]);
+    setView('failure');
+  }, [nodeId, practiceMode, recoveryMode, depth]);
 
-  const handleContinue = useCallback(() => {
-    if (!session) return;
-    const isLast = quizState.index >= session.quizzes.length - 1;
+  const applyRewards = useCallback((teachBackScore?: number) => {
+    const rewards = DEPTH_REWARDS[practiceMode || recoveryMode ? 1 : depth];
+    const perfect = quizState.wrongCount === 0;
+    let xpGained = rewards.xp;
+    let spGained = rewards.sp;
 
-    if (isLast) {
-      // Calculate rewards
-      const baseXp = node
-        ? XP_REWARDS.LESSON_COMPLETE + node.estimatedMinutes * 3
-        : XP_REWARDS.LESSON_COMPLETE;
-      const baseSp = node
-        ? SP_REWARDS.LESSON_COMPLETE + node.estimatedMinutes
-        : SP_REWARDS.LESSON_COMPLETE;
-      const wrongPenalty = Math.min(quizState.wrongCount * 0.1, 0.4);
-      const xpGained = Math.round(baseXp * (1 - wrongPenalty));
-      const spGained = Math.round(baseSp * (1 - wrongPenalty));
-      const isPerfect = quizState.wrongCount === 0;
-
-      // Apply to context
-      const xpResult = addXp(xpGained);
-      addStudyPoints(spGained);
-      let nodeResult: CompleteNodeResult | null = null;
-      if (!practiceMode && !recoveryMode && !alreadyCompleted && nodeId) {
-        nodeResult = completeNode(nodeId);
-      }
-      if (isPerfect) incrementPerfectLessons();
-      // Recovery: only grant life on a perfect run
-      const lifeRecovered = recoveryMode && isPerfect;
-      if (lifeRecovered) {
-        gainLife();
-        incrementLifeRecoveries();
-      }
-
-      setVictory({ xpGained, spGained, xpResult, nodeResult, isPerfect, lifeRecovered });
-      setView('victory');
-    } else {
-      setQuizState((s) => ({
-        ...s,
-        index: s.index + 1,
-        selected: null,
-        answered: 'idle',
-      }));
+    if (isReplay) {
+      xpGained = 0;
+      spGained = 0;
+    } else if (mode === 'review') {
+      xpGained = 20;
+      spGained = 5;
+    } else if (perfect) {
+      xpGained += rewards.perfectBonusXp;
+      if (!practiceMode && !recoveryMode) incrementPerfectLessons();
     }
-  }, [session, quizState, node, addXp, addStudyPoints, completeNode, nodeId, practiceMode, recoveryMode, alreadyCompleted, incrementPerfectLessons, gainLife, incrementLifeRecoveries]);
 
-  const handleLabComplete = useCallback(() => {
-    const xpGained = XP_REWARDS.CODING_LAB_COMPLETE;
-    const spGained = SP_REWARDS.CODING_LAB_COMPLETE;
+    if (!isReplay && mode !== 'review' && depth === 2 && (labCompletedThisRun || completedLabs.includes(nodeId ?? ''))) {
+      xpGained += LAB_BONUS.xp;
+      spGained += LAB_BONUS.sp;
+    }
+
+    if (practiceMode) {
+      xpGained = 25;
+      spGained = 15;
+    }
+
     const xpResult = addXp(xpGained);
     addStudyPoints(spGained);
-    setVictory({ xpGained, spGained, xpResult, nodeResult: null, isPerfect: false, lifeRecovered: false });
-    setView('victory');
-  }, [addXp, addStudyPoints]);
 
-  // Close on backdrop click
-  const handleBackdropClick = useCallback((e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) onClose();
+    let nodeResult: CompleteNodeResult | null = null;
+    if (!practiceMode && !recoveryMode && nodeId && !isReplay && !alreadyCompleted) {
+      nodeResult = completeDepth(nodeId, depth);
+    }
+
+    const lifeRecovered = recoveryMode && perfect;
+    if (lifeRecovered) {
+      gainLife();
+      incrementLifeRecoveries();
+    }
+
+    setVictory({
+      xpGained,
+      spGained,
+      xpResult,
+      nodeResult,
+      isPerfect: perfect,
+      lifeRecovered,
+      teachBackScore,
+    });
+    setView('victory');
+    if (mode === 'review') onReviewComplete?.();
+  }, [depth, practiceMode, recoveryMode, quizState.wrongCount, incrementPerfectLessons, labCompletedThisRun, completedLabs, nodeId, addXp, addStudyPoints, isReplay, alreadyCompleted, completeDepth, gainLife, incrementLifeRecoveries, mode, onReviewComplete]);
+
+  const handleCheck = useCallback(async (timedOut = false) => {
+    if (!session || answerSubmittingRef.current || quizState.answered !== 'idle') return;
+    answerSubmittingRef.current = true;
+    setActionBusy(true);
+    const quiz = session.quizzes[quizState.index];
+    const selected = timedOut ? -1 : quizState.selected;
+    const correct = selected === quiz.correctIndex;
+    const timeTakenMs = Date.now() - quizState.questionStartedAt;
+
+    if (!correct) loseLife();
+    if (correct) playCorrect();
+    else playWrong();
+
+    try {
+      if (nodeId) {
+        await saveQuizResult({
+          nodeId,
+          depth,
+          questionHash: quiz.questionHash ?? hashQuestion(quiz.question, quiz.codeSnippet),
+          correct,
+          timeTakenMs,
+        });
+      }
+
+      setQuizState((current) => ({
+        ...current,
+        answered: correct ? 'correct' : 'wrong',
+        wrongCount: current.wrongCount + (correct ? 0 : 1),
+        correctCount: current.correctCount + (correct ? 1 : 0),
+        selected: timedOut ? null : current.selected,
+      }));
+    } finally {
+      answerSubmittingRef.current = false;
+      setActionBusy(false);
+    }
+  }, [session, quizState.index, quizState.selected, quizState.questionStartedAt, quizState.answered, loseLife, nodeId, depth]);
+  handleCheckRef.current = handleCheck;
+
+  const handleContinue = useCallback(async () => {
+    if (!session || continueSubmittingRef.current) return;
+    continueSubmittingRef.current = true;
+    setActionBusy(true);
+    try {
+      const total = session.quizzes.length;
+      const isLast = quizState.index >= total - 1;
+
+      if (!isLast) {
+        setQuizState((current) => ({
+          ...current,
+          index: current.index + 1,
+          selected: null,
+          answered: 'idle',
+          questionStartedAt: Date.now(),
+        }));
+        return;
+      }
+
+      const finalCorrectCount = quizState.correctCount;
+      const passThreshold = getPassThreshold(depth, total, practiceMode, recoveryMode);
+      const passed = finalCorrectCount >= passThreshold;
+
+      if (!passed) {
+        await finalizeFailure();
+        if (mode === 'review') onReviewComplete?.();
+        return;
+      }
+
+      if (nodeId && !practiceMode && !recoveryMode) {
+        await upsertSrsSchedule(nodeId, true, depth);
+      }
+
+      if (mode === 'master') {
+        setView('teachback');
+        return;
+      }
+
+      applyRewards();
+    } finally {
+      continueSubmittingRef.current = false;
+      setActionBusy(false);
+    }
+  }, [session, quizState.index, quizState.correctCount, depth, practiceMode, recoveryMode, finalizeFailure, nodeId, mode, applyRewards, onReviewComplete]);
+
+  const handleLabComplete = useCallback(() => {
+    setLabCompletedThisRun(true);
+    if (nodeId) markDeepenLabComplete(nodeId);
+    setView('lesson');
+  }, [nodeId, markDeepenLabComplete]);
+
+  const handleTeachBackSuccess = useCallback((score: number) => {
+    if (score < MASTER_TEACHBACK_MIN) {
+      setView('failure');
+      return;
+    }
+    applyRewards(score);
+  }, [applyRewards]);
+
+  const handleBackdropClick = useCallback((event: React.MouseEvent) => {
+    if (event.target === event.currentTarget) onClose();
   }, [onClose]);
 
-  // Require either a node or a free-form question
   if (!node && !practiceQuestion) return null;
 
   return (
     <div className="modal-overlay" onClick={handleBackdropClick} role="dialog" aria-modal="true" aria-label={node?.title ?? session?.title ?? 'Practice Session'}>
       <div className="modal">
-        {/* Header */}
         <div className="modal-header">
           <div className="modal-header__left">
             {node && <span className="modal-node-icon">{node.icon}</span>}
             <div>
               <h2 className="modal-title">{session?.title ?? node?.title ?? 'Practice Session'}</h2>
-              {node && <span className="modal-subtitle">~{node.estimatedMinutes} min</span>}
+              {node && <span className="modal-subtitle">~{node.estimatedMinutes} min · {mode}</span>}
             </div>
           </div>
-          <button
-            id="modal-close-btn"
-            className="modal-close"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            ✕
-          </button>
+          <button id="modal-close-btn" className="modal-close" onClick={onClose} aria-label="Close">?</button>
         </div>
 
-        {/* Body */}
         <div className="modal-body">
-          {view === 'loading' && <GeminiLoadingState message="Generating your lesson..." />}
-
-          {view === 'error' && (
-            <GeminiErrorCard error={error} onRetry={retry} />
-          )}
+          {view === 'loading' && <GeminiLoadingState message="Generating your session..." />}
+          {view === 'error' && <GeminiErrorCard error={error} onRetry={retry} />}
 
           {view === 'lesson' && session && (
             <CheatSheetView
               session={session}
               noteContextId={noteContextId}
+              allowQuiz={mode !== 'replay-view'}
+              allowLab={showLab}
               onStartQuiz={handleStartQuiz}
               onOpenLab={() => setView('lab')}
-              showLab={!recoveryMode && Boolean(node?.geminiTopic || practiceQuestion)}
+              onClose={onClose}
             />
           )}
 
@@ -776,32 +843,53 @@ export default function SessionModal({
             <QuizView
               session={session}
               quizState={quizState}
+              timeLeft={timeLeft}
+              timed={timedQuiz}
+              busy={actionBusy}
               onSelect={handleSelect}
-              onCheck={handleCheck}
-              onContinue={handleContinue}
+              onCheck={() => void handleCheck(false)}
+              onContinue={() => void handleContinue()}
             />
           )}
 
-          {view === 'lab' && (node?.geminiTopic || practiceQuestion) && (
+          {view === 'lab' && showLab && (
             <CodingLabView
-              contextId={noteContextId}
-              completionNodeId={nodeId}
+              contextId={nodeId ?? noteContextId}
               apiKey={geminiApiKey}
               model={selectedModel}
-              geminiTopic={node?.geminiTopic ?? practiceQuestion ?? ''}
+              geminiTopic={lessonTopic}
+              language={language}
               onComplete={handleLabComplete}
               onBack={() => setView('lesson')}
             />
           )}
 
-          {view === 'victory' && victory && (
-            <VictoryView
-              victory={victory}
-              nodeTitle={node?.title ?? session?.title ?? 'Practice Session'}
-              onClose={onClose}
-              onRetryRecovery={recoveryMode ? onRetryRecovery : undefined}
+          {view === 'teachback' && node && (
+            <TeachBackView
+              topic={lessonTopic}
+              model={selectedModel}
+              language={language}
+              onSubmit={handleTeachBackSuccess}
+              onBack={() => setView('quiz')}
             />
           )}
+
+          {view === 'failure' && (
+            <ResultView
+              type="failure"
+              title="Assessment failed"
+              description={recoveryMode ? 'A perfect run is required to recover a life.' : 'You lost a life, but you can retry this level immediately.'}
+              primaryLabel="Retry"
+              onPrimary={() => {
+                setQuizState({ index: 0, selected: null, answered: 'idle', wrongCount: 0, correctCount: 0, questionStartedAt: Date.now() });
+                setView('quiz');
+              }}
+              secondaryLabel="Close"
+              onSecondary={onRetryRecovery ?? onClose}
+            />
+          )}
+
+          {view === 'victory' && victory && <VictoryView victory={victory} nodeTitle={node?.title ?? session?.title ?? 'Practice Session'} onClose={onClose} />}
         </div>
       </div>
     </div>

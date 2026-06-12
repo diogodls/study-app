@@ -2,13 +2,15 @@ import { useCallback, useState } from 'react';
 import { KeyRound, LogOut } from 'lucide-react';
 import { useGameState } from '@/context/GameStateContext';
 import { useAuth } from '@/context/AuthContext';
-import type { GeminiModel } from '@/types';
+import type { GeminiModel, ContentLanguage } from '@/types';
 
 export default function SettingsPage() {
   const {
     selectedModel,
+    language,
     soundEnabled,
     setModel,
+    setLanguage,
     setSoundEnabledState,
     resetAll,
   } = useGameState();
@@ -92,6 +94,46 @@ export default function SettingsPage() {
               <span className={`badge ${selectedModel === id ? 'badge-accent' : 'badge-muted'}`}>{badge}</span>
               {selectedModel === id && <span style={{ fontSize: '0.75rem', color: 'var(--accent)' }}>Active</span>}
             </div>
+          </button>
+        ))}
+      </section>
+
+      <section className="card" style={{ marginBottom: '1rem' }}>
+        <h2 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '1rem' }}>
+          Language
+        </h2>
+
+        {(
+          [
+            { id: 'en', label: 'English', desc: 'Default content language' },
+            { id: 'pt-BR', label: 'Português (Brasil)', desc: 'Lessons and quizzes generated in pt-BR' },
+          ] as { id: ContentLanguage; label: string; desc: string }[]
+        ).map(({ id, label, desc }) => (
+          <button
+            key={id}
+            id={`language-${id}-btn`}
+            onClick={() => setLanguage(id)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              width: '100%',
+              padding: '0.875rem 1rem',
+              marginBottom: '0.5rem',
+              background: language === id ? 'var(--accent-glow)' : 'var(--bg-secondary)',
+              border: `2px solid ${language === id ? 'var(--accent)' : 'var(--border)'}`,
+              borderRadius: 'var(--radius-sm)',
+              cursor: 'pointer',
+              textAlign: 'left',
+            }}
+          >
+            <div>
+              <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text)', marginBottom: '0.2rem' }}>
+                {label}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{desc}</div>
+            </div>
+            {language === id && <span style={{ fontSize: '0.75rem', color: 'var(--accent)' }}>Active</span>}
           </button>
         ))}
       </section>

@@ -5,14 +5,19 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-type RequestType = 'lesson' | 'lab' | 'practice';
+type RequestType = 'lesson' | 'lab' | 'practice' | 'master' | 'flashcards' | 'evaluate-teachback';
+type Depth = 'learn' | 'deepen' | 'master';
+type Language = 'en' | 'pt-BR';
 
 type ProxyBody = {
   action?: 'generate' | 'save-key' | 'key-status' | 'delete-key';
   apiKey?: string;
   topic?: string;
+  explanation?: string;
   model?: string;
   type?: RequestType;
+  depth?: Depth;
+  language?: Language;
 };
 
 function jsonResponse(body: unknown, status = 200) {
@@ -22,92 +27,135 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-const lessonPrompt = (topic: string) => `You are DevQuest AI, an expert computer science tutor for working developers.
-
-Generate a comprehensive, in-depth lesson about: ${topic}
-
-Respond with ONLY valid JSON - no markdown fences, no prose outside the JSON object.
-
-Required schema:
-{
-  "title": "lesson title (max 60 chars)",
-  "cheatSheet": "comprehensive markdown lesson (1200-2000 words). MUST follow this structure:\n## Concept\\nWhat it is explained intuitively with a real-world analogy. Why it matters in practice.\\n## How It Works\\nDetailed mechanism with step-by-step walkthrough. Include diagrams described in text if applicable.\\n## Code Examples\\nAt least 3 real, runnable code snippets (use fenced code blocks with language tags). Each snippet should demonstrate a different aspect. Add inline comments explaining key lines. Show both good and bad examples when relevant.\\n## Common Mistakes\\n2-3 specific pitfalls developers actually fall into, with code showing the mistake and the fix.\\n## When To Use / When Not To Use\\nPractical decision guide: scenarios where this concept shines vs. where alternatives are better.\\n## Quick Reference\\n5-7 bullet summary of the most important takeaways.",
-  "quizzes": [
-    {
-      "question": "question that tests DEEP understanding (not simple recall)",
-      "codeSnippet": "optional code block for analysis questions (use for at least 3 of the 5 quizzes)",
-      "options": ["option A", "option B", "option C", "option D"],
-      "correctIndex": 0,
-      "explanation": "thorough explanation: why the correct answer is right AND why each wrong option is wrong (2-3 sentences)"
-    }
-  ]
+function languageInstruction(language: Language) {
+  return language === 'pt-BR'
+    ? 'Respond entirely in Brazilian Portuguese.'
+    : 'Respond entirely in English.';
 }
 
-Rules:
-- quizzes: exactly 5 items
-- options: exactly 4 strings each
-- correctIndex: integer 0-3
-- codeSnippet: include for at LEAST 3 of the 5 quizzes. These must be real, realistic code (not pseudocode).
-- Quiz question types to vary across these categories:
-  * Code analysis: "What is the output/complexity/behavior of this code?"
-  * Comparison: "Why would you use X over Y in this scenario?"
-  * Debugging: "This code has a bug. What's wrong?"
-  * Application: "Given these constraints, which approach is best?"
-  * Tradeoff: "What is the downside of using X?"
-- NEVER ask simple definition recall like "What is X?" or "Which of these defines X?"
-- Escape all special characters in JSON strings
-- No trailing commas`;
-
-const labPrompt = (topic: string) => `You are DevQuest AI. Generate a hands-on coding lab for: ${topic}
-
-Respond with ONLY valid JSON - no markdown fences, no prose outside the JSON object.
-
-Required schema:
+function lessonPrompt(topic: string, depth: Depth, language: Language) {
+  const languageLine = languageInstruction(language);
+  if (depth === 'learn') {
+    return `You are DevQuest AI, a rigorous CS tutor for working developers. ${languageLine}
+Generate a dense beginner-friendly lesson about: ${topic}
+Respond with ONLY valid JSON.
+Schema:
 {
-  "instructions": "markdown lab guide (200-400 words). Include: Objective, What You'll Build, Requirements, Hints, and Expected Output.",
-  "boilerplateCode": "starter code with clear TODO comments marking exactly what to implement.",
-  "testCode": "self-contained test cases the student runs to verify their solution. Include at least 3 test cases.",
-  "fileName": "suggested filename e.g. solution.js or solution.py",
+  "title": "max 60 chars",
+  "cheatSheet": "rich markdown lesson (900-1400 words) with sections: ## Concept, ## How It Works, ## Code Examples, ## Common Mistakes, ## Quick Reference",
+  "quizzes": [{ "question": "...", "codeSnippet": "optional", "options": ["A","B","C","D"], "correctIndex": 0, "explanation": "..." }]
+}
+Rules:
+- exactly 5 quizzes
+- at least 2 quizzes with codeSnippet
+- no trivial recall questions
+- quizzes should be approachable but still practical
+- explanations must explain why correct and why wrong options are wrong`;
+  }
+
+  return `You are DevQuest AI, an expert computer science tutor for working developers. ${languageLine}
+Generate a comprehensive, in-depth lesson about: ${topic}
+Respond with ONLY valid JSON.
+Schema:
+{
+  "title": "max 60 chars",
+  "cheatSheet": "comprehensive markdown lesson (1200-2000 words) with sections: ## Concept, ## How It Works, ## Code Examples, ## Common Mistakes, ## When To Use / When Not To Use, ## Quick Reference",
+  "quizzes": [{ "question": "...", "codeSnippet": "optional", "options": ["A","B","C","D"], "correctIndex": 0, "explanation": "..." }]
+}
+Rules:
+- exactly 5 quizzes
+- at least 3 quizzes with codeSnippet
+- vary question types: analysis, comparison, debugging, application, tradeoff
+- never ask simple definition recall
+- explanations must explain why correct and why wrong options are wrong`;
+}
+
+function labPrompt(topic: string, language: Language) {
+  return `You are DevQuest AI. ${languageInstruction(language)} Generate a hands-on coding lab for: ${topic}
+Respond with ONLY valid JSON.
+Schema:
+{
+  "instructions": "markdown lab guide (250-500 words)",
+  "boilerplateCode": "starter code",
+  "testCode": "self-contained tests",
+  "fileName": "solution.js",
   "language": "javascript"
 }
-
 Rules:
-- Lab completable in 15-30 minutes
-- boilerplateCode must compile/run as-is
-- testCode must be runnable independently
-- language must be one of javascript, typescript, python`;
-
-const practicePrompt = (topic: string) => `You are DevQuest AI. Generate a focused practice session about: ${topic}
-
-Respond with ONLY valid JSON - no markdown fences, no prose outside the JSON object.
-
-Required schema:
-{
-  "title": "session title (max 50 chars)",
-  "cheatSheet": "focused markdown summary (500-800 words). Include: key concepts explained clearly, at least 2 code examples with inline comments, and a practical tip or common mistake to avoid.",
-  "quizzes": [
-    {
-      "question": "question testing deep understanding (not recall)",
-      "codeSnippet": "optional code for analysis questions (use for at least 2 of the 3 quizzes)",
-      "options": ["option A", "option B", "option C", "option D"],
-      "correctIndex": 0,
-      "explanation": "why this is correct and why others are wrong (2-3 sentences)"
-    }
-  ]
+- lab completable in 15-30 minutes
+- include objective, requirements, hints, expected output
+- boilerplate must run as-is
+- include at least 3 tests`;
 }
 
+function practicePrompt(topic: string, language: Language) {
+  return `You are DevQuest AI. ${languageInstruction(language)} Generate a focused practice session about: ${topic}
+Respond with ONLY valid JSON.
+Schema:
+{
+  "title": "session title",
+  "cheatSheet": "focused markdown summary (500-800 words)",
+  "quizzes": [{ "question": "...", "codeSnippet": "optional", "options": ["A","B","C","D"], "correctIndex": 0, "explanation": "..." }]
+}
 Rules:
-- quizzes: exactly 3 items
-- options: exactly 4 strings each
-- correctIndex: integer 0-3
-- codeSnippet: include for at LEAST 2 of the 3 quizzes
-- NEVER ask simple definition recall like "What is X?"
-- Vary question types: code analysis, debugging, comparison, application`;
+- exactly 3 quizzes
+- at least 2 quizzes with codeSnippet
+- no simple recall questions`;
+}
 
-function buildPrompt(type: RequestType, topic: string) {
-  if (type === 'lab') return labPrompt(topic);
-  if (type === 'practice') return practicePrompt(topic);
-  return lessonPrompt(topic);
+function masterPrompt(topic: string, language: Language) {
+  return `You are DevQuest AI. ${languageInstruction(language)} Generate a master-level speed challenge about: ${topic}
+Respond with ONLY valid JSON.
+Schema:
+{
+  "title": "challenge title",
+  "cheatSheet": "brief markdown refresher (250-450 words)",
+  "quizzes": [{ "question": "...", "codeSnippet": "required", "options": ["A","B","C","D"], "correctIndex": 0, "explanation": "..." }]
+}
+Rules:
+- exactly 10 quizzes
+- every quiz must include codeSnippet
+- difficulty: senior developer practical scenarios
+- favor debugging, edge cases, tricky behavior, and tradeoffs`;
+}
+
+function flashcardsPrompt(topic: string, language: Language) {
+  return `You are DevQuest AI. ${languageInstruction(language)} Generate flashcards for: ${topic}
+Respond with ONLY valid JSON.
+Schema:
+[
+  { "front": "short question", "back": "clear answer", "codeSnippet": "optional" }
+]
+Rules:
+- generate 10 to 15 flashcards
+- keep front concise and back high-value
+- include codeSnippet when code clarifies the idea`;
+}
+
+function evaluatePrompt(topic: string, explanation: string, language: Language) {
+  return `You are DevQuest AI evaluating a student's explanation. ${languageInstruction(language)}
+Topic: ${topic}
+Student explanation: ${explanation}
+Respond with ONLY valid JSON.
+Schema:
+{
+  "score": 1,
+  "summary": "2-4 sentence evaluation",
+  "missingConcepts": ["concept 1", "concept 2"]
+}
+Rules:
+- score from 1 to 10
+- be strict but constructive
+- missingConcepts should list the most important omissions`;
+}
+
+function buildPrompt(type: RequestType, topic: string, depth: Depth, language: Language, explanation?: string) {
+  if (type === 'lab') return labPrompt(topic, language);
+  if (type === 'practice') return practicePrompt(topic, language);
+  if (type === 'master') return masterPrompt(topic, language);
+  if (type === 'flashcards') return flashcardsPrompt(topic, language);
+  if (type === 'evaluate-teachback') return evaluatePrompt(topic, explanation ?? '', language);
+  return lessonPrompt(topic, depth, language);
 }
 
 function bytesToBase64(bytes: Uint8Array) {
@@ -126,24 +174,13 @@ async function encryptionKey(secret: string) {
 async function encryptApiKey(apiKey: string, secret: string) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const key = await encryptionKey(secret);
-  const encrypted = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
-    key,
-    new TextEncoder().encode(apiKey),
-  );
-  return {
-    encryptedKey: bytesToBase64(new Uint8Array(encrypted)),
-    iv: bytesToBase64(iv),
-  };
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(apiKey));
+  return { encryptedKey: bytesToBase64(new Uint8Array(encrypted)), iv: bytesToBase64(iv) };
 }
 
 async function decryptApiKey(encryptedKey: string, iv: string, secret: string) {
   const key = await encryptionKey(secret);
-  const decrypted = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: base64ToBytes(iv) },
-    key,
-    base64ToBytes(encryptedKey),
-  );
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: base64ToBytes(iv) }, key, base64ToBytes(encryptedKey));
   return new TextDecoder().decode(decrypted);
 }
 
@@ -156,17 +193,13 @@ Deno.serve(async (req) => {
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   const encryptionSecret = Deno.env.get('USER_KEY_ENCRYPTION_SECRET');
 
-  if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
-    return jsonResponse({ error: 'Supabase env missing' }, 500);
-  }
+  if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) return jsonResponse({ error: 'Supabase env missing' }, 500);
   if (!encryptionSecret) return jsonResponse({ error: 'Encryption secret missing' }, 500);
 
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) return jsonResponse({ error: 'Missing authorization' }, 401);
 
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: authHeader } } });
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return jsonResponse({ error: 'Unauthorized' }, 401);
 
@@ -189,29 +222,26 @@ Deno.serve(async (req) => {
   }
 
   if (action === 'key-status') {
-    const { data: keyRow } = await admin
-      .from('user_gemini_keys')
-      .select('user_id')
-      .eq('user_id', data.user.id)
-      .maybeSingle();
+    const { data: keyRow } = await admin.from('user_gemini_keys').select('user_id').eq('user_id', data.user.id).maybeSingle();
     return jsonResponse({ hasKey: Boolean(keyRow) });
   }
 
   if (action === 'delete-key') {
-    const { error: deleteError } = await admin
-      .from('user_gemini_keys')
-      .delete()
-      .eq('user_id', data.user.id);
+    const { error: deleteError } = await admin.from('user_gemini_keys').delete().eq('user_id', data.user.id);
     if (deleteError) return jsonResponse({ error: deleteError.message }, 500);
     return jsonResponse({ deleted: true, hasKey: false });
   }
 
   const topic = body.topic?.trim();
+  const explanation = body.explanation?.trim();
   const type = body.type ?? 'lesson';
   const model = body.model?.trim() || 'gemini-3-flash-preview';
+  const depth = body.depth ?? 'deepen';
+  const language = body.language ?? 'en';
 
-  if (!topic) return jsonResponse({ error: 'Missing topic' }, 400);
-  if (!['lesson', 'lab', 'practice'].includes(type)) return jsonResponse({ error: 'Invalid type' }, 400);
+  if ((type !== 'evaluate-teachback' && !topic) || (type === 'evaluate-teachback' && (!topic || !explanation))) {
+    return jsonResponse({ error: 'Missing topic or explanation' }, 400);
+  }
 
   const { data: keyRow, error: keyError } = await admin
     .from('user_gemini_keys')
@@ -228,17 +258,14 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'Unable to decrypt Gemini key' }, 500);
   }
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${geminiApiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: buildPrompt(type, topic) }] }],
-        generationConfig: { responseMimeType: 'application/json' },
-      }),
-    },
-  );
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${geminiApiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: buildPrompt(type, topic ?? '', depth, language, explanation) }] }],
+      generationConfig: { responseMimeType: 'application/json' },
+    }),
+  });
 
   if (!response.ok) {
     const errorText = await response.text();
