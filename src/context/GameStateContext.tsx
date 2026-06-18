@@ -81,6 +81,9 @@ const DEFAULT_STATE: GameState = {
   selectedModel: 'gemini-3-flash-preview',
   language: 'en',
   soundEnabled: true,
+  studyReminderEnabled: false,
+  studyReminderTime: '19:00',
+  studyReminderTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Sao_Paulo',
   characterName: '',
   avatarId: 'hooded-coder',
   avatarTier: 1,
@@ -172,6 +175,9 @@ type UserProgressRow = {
   selected_model: GeminiModel | null;
   language: ContentLanguage | null;
   sound_enabled: boolean | null;
+  study_reminder_enabled: boolean | null;
+  study_reminder_time: string | null;
+  study_reminder_timezone: string | null;
   selected_path_id: string | null;
 };
 
@@ -208,6 +214,9 @@ async function saveCloudProgress(userId: string, state: GameState): Promise<void
     selected_model: state.selectedModel,
     language: state.language,
     sound_enabled: state.soundEnabled,
+    study_reminder_enabled: state.studyReminderEnabled,
+    study_reminder_time: state.studyReminderTime,
+    study_reminder_timezone: state.studyReminderTimezone,
     selected_path_id: state.selectedPathId,
     updated_at: new Date().toISOString(),
   });
@@ -315,6 +324,9 @@ async function loadCloudState(userId: string): Promise<GameState | null> {
     selectedModel: progress.selected_model ?? DEFAULT_STATE.selectedModel,
     language: progress.language ?? DEFAULT_STATE.language,
     soundEnabled: progress.sound_enabled ?? DEFAULT_STATE.soundEnabled,
+    studyReminderEnabled: progress.study_reminder_enabled ?? DEFAULT_STATE.studyReminderEnabled,
+    studyReminderTime: progress.study_reminder_time ?? DEFAULT_STATE.studyReminderTime,
+    studyReminderTimezone: progress.study_reminder_timezone ?? DEFAULT_STATE.studyReminderTimezone,
     characterName: progress.character_name ?? DEFAULT_STATE.characterName,
     avatarId: progress.avatar_id ?? DEFAULT_STATE.avatarId,
     avatarTier: progress.avatar_tier ?? DEFAULT_STATE.avatarTier,
@@ -403,6 +415,7 @@ type GameContextValue = GameState & {
   setModel: (model: GeminiModel) => void;
   setLanguage: (language: ContentLanguage) => void;
   setSoundEnabledState: (enabled: boolean) => void;
+  setStudyReminder: (enabled: boolean, time?: string) => void;
   setAvatarId: (id: AvatarId) => void;
   setCharacterName: (name: string) => void;
   equipItem: (slot: GearSlot, itemId: string) => void;
@@ -745,6 +758,15 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     setState((current) => ({ ...current, soundEnabled: enabled }));
   }, []);
 
+  const setStudyReminder = useCallback((enabled: boolean, time?: string) => {
+    setState((current) => ({
+      ...current,
+      studyReminderEnabled: enabled,
+      studyReminderTime: time ?? current.studyReminderTime,
+      studyReminderTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone || current.studyReminderTimezone,
+    }));
+  }, []);
+
   const setAvatarId = useCallback((id: AvatarId) => {
     setState((current) => ({ ...current, avatarId: id }));
   }, []);
@@ -856,6 +878,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     setModel,
     setLanguage,
     setSoundEnabledState,
+    setStudyReminder,
     setAvatarId,
     setCharacterName,
     equipItem,

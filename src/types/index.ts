@@ -122,6 +122,9 @@ export type GameState = {
   selectedModel: GeminiModel;
   language: ContentLanguage;
   soundEnabled: boolean;
+  studyReminderEnabled: boolean;
+  studyReminderTime: string;
+  studyReminderTimezone: string;
 
   // Character
   characterName: string;

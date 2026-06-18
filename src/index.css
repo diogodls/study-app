@@ -536,6 +536,69 @@ code, pre {
   background: white;
 }
 
+.settings-reminder-card {
+  margin-bottom: 1rem;
+}
+
+.settings-reminder-card__header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.settings-reminder-card__icon {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border-radius: 0.65rem;
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.settings-reminder-card h2 {
+  margin: 0 0 0.2rem;
+  font-size: 0.95rem;
+}
+
+.settings-reminder-card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.settings-reminder-card__time {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.settings-reminder-card__time input {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  background: var(--bg-secondary);
+  color-scheme: dark;
+}
+
+.settings-reminder-card__timezone {
+  margin-top: 0.75rem !important;
+  font-size: 0.72rem !important;
+}
+
+.settings-reminder-card__status {
+  margin-top: 0.5rem !important;
+  color: var(--accent) !important;
+}
+
 /* Select */
 .select {
   appearance: none;

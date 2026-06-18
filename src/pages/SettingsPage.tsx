@@ -1,21 +1,33 @@
 import { useCallback, useState } from 'react';
-import { KeyRound, LogOut } from 'lucide-react';
+import { Bell, KeyRound, LogOut } from 'lucide-react';
 import { useGameState } from '@/context/GameStateContext';
 import { useAuth } from '@/context/AuthContext';
 import type { GeminiModel, ContentLanguage } from '@/types';
+import {
+  cancelStudyReminder,
+  requestNotificationPermission,
+  scheduleStudyReminder,
+} from '@/services/notificationService';
 
 export default function SettingsPage() {
   const {
     selectedModel,
     language,
     soundEnabled,
+    studyReminderEnabled,
+    studyReminderTime,
+    streak,
+    lastStudyDate,
     setModel,
     setLanguage,
     setSoundEnabledState,
+    setStudyReminder,
     resetAll,
   } = useGameState();
   const { user, signOut, deleteGeminiKey } = useAuth();
   const [resetStep, setResetStep] = useState<0 | 1>(0);
+  const [reminderStatus, setReminderStatus] = useState('');
+  const [reminderBusy, setReminderBusy] = useState(false);
 
   document.title = 'Settings - DevQuest';
 
@@ -27,6 +39,51 @@ export default function SettingsPage() {
       setResetStep(0);
     }
   }, [resetStep, resetAll]);
+
+  const handleReminderToggle = useCallback(async (enabled: boolean) => {
+    setReminderBusy(true);
+    setReminderStatus('');
+    try {
+      if (!enabled) {
+        await cancelStudyReminder();
+        setStudyReminder(false);
+        setReminderStatus('Daily reminder disabled.');
+        return;
+      }
+
+      const permission = await requestNotificationPermission();
+      if (permission !== 'granted') {
+        setStudyReminder(false);
+        setReminderStatus(permission === 'denied'
+          ? 'Notification permission was denied. Enable it in your phone settings.'
+          : 'Notifications are not supported in this browser.');
+        return;
+      }
+
+      await scheduleStudyReminder(studyReminderTime, streak, lastStudyDate);
+      setStudyReminder(true);
+      setReminderStatus(`Reminder scheduled for ${studyReminderTime}.`);
+    } catch {
+      setStudyReminder(false);
+      setReminderStatus('Unable to schedule the reminder on this device.');
+    } finally {
+      setReminderBusy(false);
+    }
+  }, [studyReminderTime, streak, lastStudyDate, setStudyReminder]);
+
+  const handleReminderTimeChange = useCallback(async (time: string) => {
+    setStudyReminder(studyReminderEnabled, time);
+    if (!studyReminderEnabled) return;
+    setReminderBusy(true);
+    try {
+      await scheduleStudyReminder(time, streak, lastStudyDate);
+      setReminderStatus(`Reminder rescheduled for ${time}.`);
+    } catch {
+      setReminderStatus('Unable to reschedule the reminder on this device.');
+    } finally {
+      setReminderBusy(false);
+    }
+  }, [studyReminderEnabled, streak, lastStudyDate, setStudyReminder]);
 
   return (
     <div className="page stagger-children">
@@ -51,6 +108,41 @@ export default function SettingsPage() {
         >
           <KeyRound size={14} /> Replace Gemini key
         </button>
+      </section>
+
+      <section className="card settings-reminder-card">
+        <div className="settings-reminder-card__header">
+          <div className="settings-reminder-card__icon"><Bell size={18} /></div>
+          <div>
+            <h2>Study Reminder</h2>
+            <p>Receive a daily reminder before your streak is at risk.</p>
+          </div>
+          <input
+            id="study-reminder-toggle"
+            type="checkbox"
+            className="toggle"
+            checked={studyReminderEnabled}
+            disabled={reminderBusy}
+            onChange={(event) => void handleReminderToggle(event.target.checked)}
+            aria-label="Toggle daily study reminder"
+          />
+        </div>
+
+        <label className="settings-reminder-card__time" htmlFor="study-reminder-time">
+          <span>Reminder time</span>
+          <input
+            id="study-reminder-time"
+            type="time"
+            value={studyReminderTime}
+            disabled={reminderBusy}
+            onChange={(event) => void handleReminderTimeChange(event.target.value)}
+          />
+        </label>
+
+        <p className="settings-reminder-card__timezone">
+          Device timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
+        </p>
+        {reminderStatus && <p className="settings-reminder-card__status" role="status">{reminderStatus}</p>}
       </section>
 
       <section className="card" style={{ marginBottom: '1rem' }}>
