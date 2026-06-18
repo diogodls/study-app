@@ -14,6 +14,7 @@ import SessionModal from '@/components/SessionModal';
 import SrsReviewSection from '@/components/SrsReviewSection';
 import FlashcardReviewModal from '@/components/FlashcardReviewModal';
 import DailyChallengeCard from '@/components/DailyChallengeCard';
+import WeeklyMissionsCard from '@/components/WeeklyMissionsCard';
 import { buildReviewPrompt, type DueReview } from '@/services/srsService';
 import {
   completeDailyChallenge,
@@ -280,6 +281,8 @@ export default function PracticePage() {
         refreshKey={dailyRefreshKey}
         onStart={(challenge) => void handleStartDailyChallenge(challenge)}
       />
+
+      <WeeklyMissionsCard refreshKey={dailyRefreshKey + reviewRefreshKey} />
 
       <SrsReviewSection
         refreshKey={reviewRefreshKey}

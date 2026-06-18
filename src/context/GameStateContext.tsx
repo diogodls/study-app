@@ -844,6 +844,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
       supabase.from('user_srs_schedule').delete().eq('user_id', userId),
       supabase.from('user_daily_challenges').delete().eq('user_id', userId),
       supabase.from('user_daily_challenge_stats').delete().eq('user_id', userId),
+      supabase.from('user_weekly_mission_claims').delete().eq('user_id', userId),
       supabase.from('user_node_depths').delete().eq('user_id', userId),
       supabase.from('user_rewards').delete().eq('user_id', userId),
       supabase.from('user_gear').delete().eq('user_id', userId),
