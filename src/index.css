@@ -1459,42 +1459,86 @@ code, pre {
 }
 .banner__cta:hover { text-decoration: underline; }
 
-/* -- Path tabs --------------------------------------------- */
-.path-tabs {
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  padding-bottom: 0.25rem;
-  margin-bottom: 1rem;
-  scrollbar-width: none;
-}
-.path-tabs::-webkit-scrollbar { display: none; }
-
-.path-tab {
-  display: flex;
-  flex-direction: column;
+/* -- Path catalog ------------------------------------------ */
+.path-catalog { margin-bottom: 1rem; }
+.path-catalog__trigger {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 0.2rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--radius-sm);
-  border: 1.5px solid transparent;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
   background: var(--bg-card);
   cursor: pointer;
-  transition: all 0.18s ease;
-  min-width: 3.5rem;
-  flex-shrink: 0;
+  text-align: left;
 }
-.path-tab__icon { font-size: 1.25rem; line-height: 1; }
-.path-tab__label { font-size: 0.65rem; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+.path-catalog__trigger-icon { font-size: 1.5rem; }
+.path-catalog__trigger small { display: block; color: var(--text-muted); font-size: 0.65rem; text-transform: uppercase; }
+.path-catalog__trigger strong { display: block; margin-top: 0.1rem; font-size: 0.9rem; }
+.path-catalog__trigger-action { color: var(--accent); font-size: 0.72rem; font-weight: 700; }
+.path-catalog__panel {
+  max-height: min(65vh, 42rem);
+  margin-top: 0.6rem;
+  padding: 0.9rem;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+}
+.path-catalog__group + .path-catalog__group { margin-top: 1rem; }
+.path-catalog__group h2 { margin: 0 0 0.5rem; color: var(--text-muted); font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; }
+.path-catalog__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.55rem; }
+.path-catalog__card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  background: var(--bg-secondary);
+  cursor: pointer;
+  text-align: left;
+}
+.path-catalog__card--active {
+  border-color: var(--catalog-color);
+  background: color-mix(in srgb, var(--catalog-color) 10%, var(--bg-secondary));
+}
+.path-catalog__card-icon { font-size: 1.2rem; }
+.path-catalog__card-body { min-width: 0; }
+.path-catalog__card-body strong,
+.path-catalog__card-body small,
+.path-catalog__card-body em { display: block; }
+.path-catalog__card-body strong { font-size: 0.78rem; }
+.path-catalog__card-body small { margin-top: 0.15rem; color: var(--text-muted); font-size: 0.65rem; }
+.path-catalog__card-body em { margin-top: 0.25rem; color: var(--accent); font-size: 0.62rem; font-style: normal; }
+.path-catalog__current { grid-column: 2; color: var(--catalog-color); font-size: 0.62rem; font-weight: 800; text-transform: uppercase; }
 
-.path-tab--active {
-  border-color: var(--tab-color, var(--accent));
-  background: color-mix(in srgb, var(--tab-color, var(--accent)) 12%, var(--bg-card));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tab-color, var(--accent)) 20%, transparent);
+.session-context {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
 }
-.path-tab--active .path-tab__label { color: var(--tab-color, var(--accent)); }
-.path-tab:not(.path-tab--active):hover {
-  border-color: color-mix(in srgb, var(--tab-color, var(--accent)) 40%, transparent);
+.session-context h3 { margin: 0 0 0.65rem; font-size: 0.9rem; }
+.session-context ul { margin: 0; padding-left: 1.15rem; color: var(--text-muted); font-size: 0.82rem; line-height: 1.55; }
+.session-resources { display: grid; gap: 0.5rem; }
+.session-resources a { display: flex; gap: 0.55rem; padding: 0.6rem; border-radius: var(--radius-sm); color: var(--text); background: var(--bg-card); text-decoration: none; }
+.session-resources a:hover { outline: 1px solid var(--accent); }
+.session-resources strong,
+.session-resources small { display: block; }
+.session-resources strong { font-size: 0.8rem; }
+.session-resources small { color: var(--text-muted); font-size: 0.65rem; text-transform: uppercase; }
+
+@media (max-width: 560px) {
+  .path-catalog__grid { grid-template-columns: 1fr; }
+  .path-catalog__trigger-action { max-width: 5.5rem; text-align: right; }
 }
 
 /* -- Path header ------------------------------------------- */

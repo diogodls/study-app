@@ -342,18 +342,9 @@ async function loadCloudState(userId: string): Promise<GameState | null> {
 
 function computeUnlockedBadgeIds(state: GameState): string[] {
   const unlocked: string[] = [];
-  const pathBadgeMap: Record<string, string> = {
-    'data-structures': 'badge-dsa-complete',
-    aws: 'badge-aws-complete',
-    backend: 'badge-backend-complete',
-    'system-design': 'badge-system-complete',
-    testing: 'badge-testing-complete',
-    performance: 'badge-perf-complete',
-    'frontend-rendering': 'badge-frontend-complete',
-  };
 
   for (const path of LEARNING_PATHS) {
-    const badgeId = pathBadgeMap[path.id];
+    const badgeId = path.masteryBadgeId;
     if (!badgeId) continue;
     const allMastered = path.nodes.every((node) => (state.nodeDepths[node.id] ?? 0) >= 3);
     if (allMastered) unlocked.push(badgeId);
@@ -414,6 +405,7 @@ type GameContextValue = GameState & {
   setApiKey: (key: string) => void;
   setModel: (model: GeminiModel) => void;
   setLanguage: (language: ContentLanguage) => void;
+  setSelectedPath: (pathId: string) => void;
   setSoundEnabledState: (enabled: boolean) => void;
   setStudyReminder: (enabled: boolean, time?: string) => void;
   setAvatarId: (id: AvatarId) => void;
@@ -753,6 +745,10 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     setState((current) => ({ ...current, language }));
   }, []);
 
+  const setSelectedPath = useCallback((pathId: string) => {
+    setState((current) => ({ ...current, selectedPathId: pathId }));
+  }, []);
+
   const setSoundEnabledState = useCallback((enabled: boolean) => {
     setSoundEnabled(enabled);
     setState((current) => ({ ...current, soundEnabled: enabled }));
@@ -878,6 +874,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     setApiKey,
     setModel,
     setLanguage,
+    setSelectedPath,
     setSoundEnabledState,
     setStudyReminder,
     setAvatarId,

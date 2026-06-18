@@ -1,3 +1,5 @@
+import { EXPANSION_PATHS } from '@/config/expansionPaths';
+
 // ============================================================
 // DevQuest â€” Learning Paths Configuration
 // ============================================================
@@ -19,7 +21,16 @@ export type SkillNode = {
     deepen?: string;
     master?: string;
   };
+  applications?: string[];
+  resources?: {
+    title: string;
+    url: string;
+    type: 'docs' | 'reference';
+  }[];
+  capstone?: boolean;
 };
+
+export type PathCategory = 'Foundations' | 'Development' | 'Infrastructure' | 'Architecture' | 'Specializations';
 
 export type LearningPath = {
   id: string;
@@ -30,6 +41,10 @@ export type LearningPath = {
   color: string; // CSS color value
   cssVar: string; // references --path-* CSS variable name
   nodes: SkillNode[];
+  category?: PathCategory;
+  releaseWave?: 1 | 2;
+  recommendedPathIds?: string[];
+  masteryBadgeId?: string;
 };
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -930,14 +945,67 @@ const frontendRenderingPath: LearningPath = {
 // MASTER EXPORT â€” add new paths here to register them globally
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export const LEARNING_PATHS: LearningPath[] = [
-  dataStructuresPath,
-  awsPath,
-  backendPath,
-  systemDesignPath,
-  testingPath,
-  performancePath,
-  frontendRenderingPath,
+  { ...dataStructuresPath, category: 'Foundations', masteryBadgeId: 'badge-dsa-complete' },
+  { ...awsPath, category: 'Infrastructure', masteryBadgeId: 'badge-aws-complete' },
+  { ...backendPath, category: 'Development', masteryBadgeId: 'badge-backend-complete' },
+  { ...systemDesignPath, category: 'Architecture', masteryBadgeId: 'badge-system-complete' },
+  { ...testingPath, category: 'Development', masteryBadgeId: 'badge-testing-complete' },
+  { ...performancePath, category: 'Specializations', masteryBadgeId: 'badge-perf-complete' },
+  { ...frontendRenderingPath, category: 'Architecture', masteryBadgeId: 'badge-frontend-complete' },
+  ...EXPANSION_PATHS,
 ];
+
+export function validateLearningPaths(paths: LearningPath[]): void {
+  const pathIds = new Set<string>();
+  const nodeIds = new Set<string>();
+
+  for (const path of paths) {
+    if (pathIds.has(path.id)) throw new Error(`Duplicate path id: ${path.id}`);
+    pathIds.add(path.id);
+
+    if (path.releaseWave && (path.nodes.length < 8 || path.nodes.length > 10)) {
+      throw new Error(`Expansion path ${path.id} must contain 8-10 nodes`);
+    }
+    if (path.releaseWave && !path.nodes.at(-1)?.capstone) {
+      throw new Error(`Expansion path ${path.id} must end with a capstone`);
+    }
+
+    const localIds = new Set(path.nodes.map((node) => node.id));
+    for (const node of path.nodes) {
+      if (nodeIds.has(node.id)) throw new Error(`Duplicate node id: ${node.id}`);
+      nodeIds.add(node.id);
+      if (node.pathId !== path.id) throw new Error(`Node ${node.id} has invalid pathId`);
+      if (node.prerequisiteIds.some((id) => !localIds.has(id))) {
+        throw new Error(`Node ${node.id} has an invalid prerequisite`);
+      }
+      if (path.releaseWave) {
+        if (!node.depthTopics?.learn || !node.depthTopics.deepen || !node.depthTopics.master) {
+          throw new Error(`Node ${node.id} is missing depth topics`);
+        }
+        if ((node.applications?.length ?? 0) < 2) throw new Error(`Node ${node.id} needs two applications`);
+        if ((node.resources?.length ?? 0) < 2) throw new Error(`Node ${node.id} needs two resources`);
+        if (node.resources?.some((resource) => !resource.url.startsWith('https://'))) {
+          throw new Error(`Node ${node.id} has a non-HTTPS resource`);
+        }
+      }
+    }
+
+    const visited = new Set<string>();
+    const visiting = new Set<string>();
+    const visit = (nodeId: string) => {
+      if (visiting.has(nodeId)) throw new Error(`Cycle detected in path ${path.id}`);
+      if (visited.has(nodeId)) return;
+      visiting.add(nodeId);
+      const node = path.nodes.find((candidate) => candidate.id === nodeId);
+      node?.prerequisiteIds.forEach(visit);
+      visiting.delete(nodeId);
+      visited.add(nodeId);
+    };
+    path.nodes.forEach((node) => visit(node.id));
+  }
+}
+
+validateLearningPaths(LEARNING_PATHS);
 
 // Helper: get a path by id
 export function getPath(pathId: string): LearningPath | undefined {

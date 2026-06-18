@@ -6,7 +6,7 @@
 // ============================================================
 
 // ─── Re-exports from config ────────────────────────────────
-export type { SkillNode, LearningPath } from '@/config/paths';
+export type { SkillNode, LearningPath, PathCategory } from '@/config/paths';
 export type {
   AvatarId,
   AvatarTier,

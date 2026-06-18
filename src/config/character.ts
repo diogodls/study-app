@@ -243,6 +243,62 @@ export const BADGE_DEFINITIONS: BadgeDef[] = [
     emoji: 'ðŸ–¥ï¸',
     requirement: 'Complete all nodes in the frontend-rendering path',
   },
+  {
+    id: 'badge-git-master',
+    title: 'History Guardian',
+    description: 'Master every Git & Version Control node.',
+    emoji: '🌿',
+    requirement: 'Master all nodes in the git path',
+  },
+  {
+    id: 'badge-linux-master',
+    title: 'Kernel Keeper',
+    description: 'Master every Linux & Shell node.',
+    emoji: '🐧',
+    requirement: 'Master all nodes in the linux path',
+  },
+  {
+    id: 'badge-networking-master',
+    title: 'Packet Pathfinder',
+    description: 'Master every Networking node.',
+    emoji: '🌐',
+    requirement: 'Master all nodes in the networking path',
+  },
+  {
+    id: 'badge-appsec-master',
+    title: 'Threat Hunter',
+    description: 'Master every Application Security node.',
+    emoji: '🛡️',
+    requirement: 'Master all nodes in the appsec path',
+  },
+  {
+    id: 'badge-devops-master',
+    title: 'Release Commander',
+    description: 'Master every DevOps & CI/CD node.',
+    emoji: '🚢',
+    requirement: 'Master all nodes in the devops path',
+  },
+  {
+    id: 'badge-typescript-master',
+    title: 'Type Architect',
+    description: 'Master every Advanced TypeScript node.',
+    emoji: '🔷',
+    requirement: 'Master all nodes in the typescript-advanced path',
+  },
+  {
+    id: 'badge-ai-master',
+    title: 'Model Tamer',
+    description: 'Master every Applied AI Engineering node.',
+    emoji: '🤖',
+    requirement: 'Master all nodes in the applied-ai path',
+  },
+  {
+    id: 'badge-patterns-master',
+    title: 'Pattern Smith',
+    description: 'Master every Applied Design Patterns node.',
+    emoji: '🧩',
+    requirement: 'Master all nodes in the design-patterns path',
+  },
 
   // â”€â”€ Streak badges â”€â”€
   {

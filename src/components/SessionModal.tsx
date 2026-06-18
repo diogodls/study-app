@@ -103,6 +103,7 @@ function getPassThreshold(depth: NodeDepth, total: number, practiceMode: boolean
 
 function CheatSheetView({
   session,
+  node,
   noteContextId,
   allowQuiz,
   allowLab,
@@ -111,6 +112,7 @@ function CheatSheetView({
   onClose,
 }: {
   session: CheatSheetSession;
+  node: ReturnType<typeof getNode>;
   noteContextId: string;
   allowQuiz: boolean;
   allowLab: boolean;
@@ -123,6 +125,30 @@ function CheatSheetView({
       <div className="modal-prose">
         <ReactMarkdown components={mdComponents}>{session.cheatSheet}</ReactMarkdown>
       </div>
+      {node?.applications?.length ? (
+        <section className="session-context">
+          <h3>Professional Applications</h3>
+          <ul>
+            {node.applications.map((application) => <li key={application}>{application}</li>)}
+          </ul>
+        </section>
+      ) : null}
+      {node?.resources?.length ? (
+        <section className="session-context">
+          <h3>Official Resources</h3>
+          <div className="session-resources">
+            {node.resources.map((resource) => (
+              <a key={resource.url} href={resource.url} target="_blank" rel="noreferrer">
+                <span>{resource.type === 'docs' ? '📘' : '🔎'}</span>
+                <span>
+                  <strong>{resource.title}</strong>
+                  <small>{resource.type}</small>
+                </span>
+              </a>
+            ))}
+          </div>
+        </section>
+      ) : null}
       <ContentNotes contextId={noteContextId} contentType="lesson" />
       <div className="modal-actions">
         <button className="btn btn-ghost" onClick={onClose}>Close</button>
@@ -866,6 +892,7 @@ export default function SessionModal({
           {view === 'lesson' && session && (
             <CheatSheetView
               session={session}
+              node={node}
               noteContextId={noteContextId}
               allowQuiz={mode !== 'replay-view'}
               allowLab={showLab}

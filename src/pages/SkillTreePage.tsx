@@ -2,9 +2,10 @@ import { useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useGameState } from '@/context/GameStateContext';
 import { LEARNING_PATHS, isNodeUnlocked } from '@/config/paths';
-import type { SkillNode, LearningPath, NodeDepth, SessionMode } from '@/types';
+import type { SkillNode, NodeDepth, SessionMode } from '@/types';
 import SessionModal from '@/components/SessionModal';
 import NodeDepthModal from '@/components/NodeDepthModal';
+import PathCatalog from '@/components/PathCatalog';
 
 document.title = 'Skill Tree — DevQuest';
 
@@ -78,34 +79,11 @@ function NodeCard({
 // ─────────────────────────────────────────────────────────────
 // Path tab
 // ─────────────────────────────────────────────────────────────
-function PathTab({
-  path,
-  active,
-  onClick,
-}: {
-  path: LearningPath;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      id={`path-tab-${path.id}`}
-      className={`path-tab ${active ? 'path-tab--active' : ''}`}
-      style={{ '--tab-color': path.color } as React.CSSProperties}
-      onClick={onClick}
-      aria-selected={active}
-    >
-      <span className="path-tab__icon">{path.icon}</span>
-      <span className="path-tab__label">{path.shortTitle}</span>
-    </button>
-  );
-}
-
 // ─────────────────────────────────────────────────────────────
 // Main page
 // ─────────────────────────────────────────────────────────────
 export default function SkillTreePage() {
-  const { completedNodes, nodeDepths, completedLabs, lives, selectedPathId: savedPathId } = useGameState();
+  const { completedNodes, nodeDepths, completedLabs, lives, selectedPathId: savedPathId, setSelectedPath } = useGameState();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -144,16 +122,15 @@ export default function SkillTreePage() {
       )}
 
       {/* ── Path tabs ────────────────────────────────────── */}
-      <div className="path-tabs" role="tablist" aria-label="Learning paths">
-        {LEARNING_PATHS.map((p) => (
-          <PathTab
-            key={p.id}
-            path={p}
-            active={p.id === selectedPathId}
-            onClick={() => setSelectedPathId(p.id)}
-          />
-        ))}
-      </div>
+      <PathCatalog
+        paths={LEARNING_PATHS}
+        selectedPathId={selectedPathId}
+        nodeDepths={nodeDepths}
+        onSelect={(pathId) => {
+          setSelectedPathId(pathId);
+          setSelectedPath(pathId);
+        }}
+      />
 
       {/* ── Path header ──────────────────────────────────── */}
       <div
