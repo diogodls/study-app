@@ -71,6 +71,7 @@ const DEFAULT_STATE: GameState = {
   nodeDepths: {},
   completedNodes: [],
   completedLabs: [],
+  testedOutNodes: [],
   masteredNodeCount: 0,
   claimedMasterRewardMilestones: [],
   perfectLessons: 0,
@@ -110,6 +111,10 @@ function buildCompletedLabs(nodeDepthRows: NodeDepthRow[]): string[] {
   return nodeDepthRows.filter((row) => row.deepen_lab_completed).map((row) => row.node_id);
 }
 
+function buildTestedOutNodes(nodeDepthRows: NodeDepthRow[]): string[] {
+  return nodeDepthRows.filter((row) => row.tested_out).map((row) => row.node_id);
+}
+
 function buildCompletedNodes(nodeDepths: Record<string, NodeDepth>): string[] {
   return getCompletedNodesFromDepths(nodeDepths);
 }
@@ -137,6 +142,7 @@ function loadLocalState(): GameState {
         ...DEFAULT_STATE,
         ...parsed,
         nodeDepths: parsed.nodeDepths ?? {},
+        testedOutNodes: parsed.testedOutNodes ?? [],
         completedLabs: parsed.completedLabs ?? [],
         companion: { ...DEFAULT_STATE.companion, ...parsed.companion },
       });
@@ -185,6 +191,7 @@ type NodeDepthRow = {
   node_id: string;
   depth: NodeDepth;
   deepen_lab_completed: boolean;
+  tested_out?: boolean;
 };
 
 type MasterRewardRow = {
@@ -229,6 +236,7 @@ async function saveCloudSnapshot(userId: string, state: GameState): Promise<void
     node_id: nodeId,
     depth,
     deepen_lab_completed: state.completedLabs.includes(nodeId),
+    tested_out: state.testedOutNodes.includes(nodeId),
     updated_at: new Date().toISOString(),
   }));
   if (depthRows.length) {
@@ -275,7 +283,7 @@ async function loadCloudState(userId: string): Promise<GameState | null> {
   if (!progress) return null;
 
   const [nodeDepthsResult, cosmeticsResult, gearResult, rewardsResult, masterRewardsResult, legacyCompletionsResult] = await Promise.all([
-    supabase.from('user_node_depths').select('node_id,depth,deepen_lab_completed').eq('user_id', userId),
+    supabase.from('user_node_depths').select('node_id,depth,deepen_lab_completed,tested_out').eq('user_id', userId),
     supabase.from('user_cosmetics').select('cosmetic_id').eq('user_id', userId),
     supabase.from('user_gear').select('gear_id').eq('user_id', userId),
     supabase.from('user_rewards').select('id,name,cost_sp,type,duration_minutes').eq('user_id', userId),
@@ -309,6 +317,7 @@ async function loadCloudState(userId: string): Promise<GameState | null> {
     lastStudyDate: progress.last_study_date,
     nodeDepths,
     completedLabs: buildCompletedLabs(depthRows),
+    testedOutNodes: buildTestedOutNodes(depthRows),
     claimedMasterRewardMilestones: (masterRewardsResult.data ?? []).map((row: MasterRewardRow) => row.milestone),
     perfectLessons: progress.perfect_lessons ?? DEFAULT_STATE.perfectLessons,
     lifeRecoveries: progress.life_recoveries ?? DEFAULT_STATE.lifeRecoveries,
@@ -406,6 +415,7 @@ type GameContextValue = GameState & {
   setModel: (model: GeminiModel) => void;
   setLanguage: (language: ContentLanguage) => void;
   setSelectedPath: (pathId: string) => void;
+  applyTestedOutNodes: (nodeIds: string[]) => void;
   setSoundEnabledState: (enabled: boolean) => void;
   setStudyReminder: (enabled: boolean, time?: string) => void;
   setAvatarId: (id: AvatarId) => void;
@@ -749,6 +759,17 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     setState((current) => ({ ...current, selectedPathId: pathId }));
   }, []);
 
+  const applyTestedOutNodes = useCallback((nodeIds: string[]) => {
+    setState((current) => withDerivedProgress({
+      ...current,
+      testedOutNodes: [...new Set([...current.testedOutNodes, ...nodeIds])],
+      nodeDepths: nodeIds.reduce((depths, nodeId) => ({
+        ...depths,
+        [nodeId]: Math.max(depths[nodeId] ?? 0, 1) as NodeDepth,
+      }), current.nodeDepths),
+    }));
+  }, []);
+
   const setSoundEnabledState = useCallback((enabled: boolean) => {
     setSoundEnabled(enabled);
     setState((current) => ({ ...current, soundEnabled: enabled }));
@@ -823,6 +844,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
       nodeDepths: {},
       completedNodes: [],
       completedLabs: [],
+      testedOutNodes: [],
       masteredNodeCount: 0,
       claimedMasterRewardMilestones: [],
     }));
@@ -841,6 +863,8 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
       supabase.from('user_daily_challenges').delete().eq('user_id', userId),
       supabase.from('user_daily_challenge_stats').delete().eq('user_id', userId),
       supabase.from('user_weekly_mission_claims').delete().eq('user_id', userId),
+      supabase.from('user_path_assessments').delete().eq('user_id', userId),
+      supabase.from('user_study_events').delete().eq('user_id', userId),
       supabase.from('user_node_depths').delete().eq('user_id', userId),
       supabase.from('user_rewards').delete().eq('user_id', userId),
       supabase.from('user_gear').delete().eq('user_id', userId),
@@ -875,6 +899,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     setModel,
     setLanguage,
     setSelectedPath,
+    applyTestedOutNodes,
     setSoundEnabledState,
     setStudyReminder,
     setAvatarId,

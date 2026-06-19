@@ -198,7 +198,7 @@ function LegacyStepApiKey({
     if (!apiKey.trim()) { setTestMsg('Enter a key first.'); setTestStatus('fail'); return; }
     setTestStatus('testing');
     try {
-      await generateLesson('Say: OK', apiKey.trim(), 'gemini-2.5-flash');
+      await generateLesson('Say: OK', apiKey.trim(), 'gemini-2.5-flash', 'learn', 'en');
       setTestStatus('ok');
       setTestMsg('✅ Key works!');
     } catch {

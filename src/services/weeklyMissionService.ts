@@ -22,13 +22,13 @@ export type WeeklyMissionClaim = {
 export async function getWeeklyMissions(): Promise<WeeklyMission[]> {
   const { data, error } = await supabase.rpc('get_weekly_missions');
   if (error) throw error;
-  return (data ?? []).map((row) => ({
+  return (data ?? []).map((row: Record<string, unknown>) => ({
     type: row.mission_type as WeeklyMissionType,
-    current: row.current_progress,
-    target: row.target,
-    claimed: row.claimed,
-    xpReward: row.xp_reward,
-    spReward: row.sp_reward,
+    current: Number(row.current_progress),
+    target: Number(row.target),
+    claimed: Boolean(row.claimed),
+    xpReward: Number(row.xp_reward),
+    spReward: Number(row.sp_reward),
   }));
 }
 
@@ -47,4 +47,3 @@ export async function claimWeeklyMission(type: WeeklyMissionType): Promise<Weekl
     totalSp: row.total_sp,
   };
 }
-

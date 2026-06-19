@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RotateCcw, X } from 'lucide-react';
 import GeminiErrorCard from '@/components/GeminiErrorCard';
 import GeminiLoadingState from '@/components/GeminiLoadingState';
 import { useGameState } from '@/context/GameStateContext';
 import { getCachedContent, saveCachedContent } from '@/services/contentCacheService';
 import { generateFlashcards } from '@/services/geminiService';
+import { createActiveTimeTracker, recordStudyEvent } from '@/services/analyticsService';
 import {
   buildReviewPrompt,
   recordSrsReview,
@@ -33,6 +34,8 @@ export default function FlashcardReviewModal({
   const [remembered, setRemembered] = useState(0);
   const [completed, setCompleted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const trackerRef = useRef<ReturnType<typeof createActiveTimeTracker> | null>(null);
+  const eventKeyRef = useRef(`flashcards:${review.nodeId}:${review.depth}:${Date.now()}`);
 
   const loadCards = useCallback(async () => {
     setLoading(true);
@@ -74,8 +77,10 @@ export default function FlashcardReviewModal({
   }, [loadCards]);
 
   useEffect(() => {
+    trackerRef.current = createActiveTimeTracker();
     document.body.style.overflow = 'hidden';
     return () => {
+      trackerRef.current?.stop();
       document.body.style.overflow = '';
     };
   }, []);
@@ -104,6 +109,15 @@ export default function FlashcardReviewModal({
       ratio < 0.9 ? 'good' :
       'easy';
     await recordSrsReview(review.nodeId, review.depth, rating);
+    await recordStudyEvent({
+      eventKey: eventKeyRef.current,
+      eventType: 'flashcards',
+      nodeId: review.nodeId,
+      depth: review.depth,
+      outcome: rating,
+      activeSeconds: trackerRef.current?.seconds() ?? 0,
+      metadata: { remembered: nextRemembered, total: cards.length },
+    });
     setSaving(false);
     setCompleted(true);
     onComplete();

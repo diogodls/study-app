@@ -57,7 +57,7 @@ let requestQueue: Promise<void> = Promise.resolve();
 let requestTimestamps: number[] = [];
 const inFlightRequests = new Map<string, Promise<string>>();
 
-type ProxyType = 'lesson' | 'lab' | 'practice' | 'master' | 'flashcards' | 'daily-challenge' | 'evaluate-teachback';
+type ProxyType = 'lesson' | 'lab' | 'practice' | 'master' | 'flashcards' | 'daily-challenge' | 'assessment' | 'evaluate-teachback';
 
 type ProxyBody = {
   type: ProxyType;
@@ -146,6 +146,10 @@ export function generatePracticeSession(question: string, _apiKey: string, model
 
 export function generateDailyChallenge(topic: string, model: string, language: ContentLanguage): Promise<CheatSheetSession> {
   return request<CheatSheetSession>({ type: 'daily-challenge', topic, model, language });
+}
+
+export function generateSkillAssessment(topic: string, model: string, language: ContentLanguage): Promise<CheatSheetSession> {
+  return request<CheatSheetSession>({ type: 'assessment', topic, model, language });
 }
 
 export function generateMasterSession(topic: string, _apiKey: string, model: string, language: ContentLanguage): Promise<CheatSheetSession> {

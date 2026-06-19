@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useGameState } from '@/context/GameStateContext';
 import {
   BADGE_DEFINITIONS,
@@ -9,6 +10,13 @@ import {
 import { getLevel, getLevelTitle, getProgressToNextLevel, getCompanionStage } from '@/config/levels';
 import { LEARNING_PATHS } from '@/config/paths';
 import { AvatarSprite, CompanionDisplay } from '@/components/PixelSprites';
+import ProfileAnalytics from '@/components/ProfileAnalytics';
+
+type ProfileTab = 'overview' | 'analytics' | 'badges';
+
+function ProfileTabs({ active, onChange }: { active: ProfileTab; onChange: (tab: ProfileTab) => void }) {
+  return <div className="profile-tabs">{(['overview', 'analytics', 'badges'] as ProfileTab[]).map((tab) => <button key={tab} className={active === tab ? 'active' : ''} onClick={() => onChange(tab)}>{tab[0].toUpperCase() + tab.slice(1)}</button>)}</div>;
+}
 
 const SLOT_LABELS: Record<string, string> = {
   weapon: '⚔️ Weapon',
@@ -23,6 +31,7 @@ const RARITY_CLASS: Record<string, string> = {
 };
 
 export default function ProfilePage() {
+  const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
   const {
     xp,
     streak,
@@ -54,8 +63,27 @@ export default function ProfilePage() {
     p.nodes.some((n) => completedNodes.includes(n.id))
   ).length;
 
+  if (activeTab === 'analytics') {
+    return <div className="page"><ProfileTabs active={activeTab} onChange={setActiveTab} /><ProfileAnalytics /></div>;
+  }
+
+  if (activeTab === 'badges') {
+    return (
+      <div className="page">
+        <ProfileTabs active={activeTab} onChange={setActiveTab} />
+        <div className="profile-badge-grid">
+          {BADGE_DEFINITIONS.map((badge) => {
+            const earned = unlockedBadgeIds.includes(badge.id);
+            return <div key={badge.id} className={`card ${earned ? '' : 'profile-badge--locked'}`}><span>{badge.emoji}</span><strong>{badge.title}</strong><small>{earned ? badge.description : badge.requirement}</small></div>;
+          })}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="page stagger-children">
+      <ProfileTabs active={activeTab} onChange={setActiveTab} />
       {/* ── Character Card ─────────────────────────────── */}
       <div
         className={`card ${cosmeticClass}`}
@@ -257,7 +285,7 @@ export default function ProfilePage() {
       </section>
 
       {/* ── Badges ─────────────────────────────────────── */}
-      <section style={{ marginBottom: '2rem' }}>
+      <section style={{ marginBottom: '2rem', display: 'none' }}>
         <h2 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.75rem' }}>
           Badges ({unlockedBadgeIds.length}/{BADGE_DEFINITIONS.length})
         </h2>

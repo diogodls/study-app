@@ -56,6 +56,29 @@ export type Flashcard = {
   codeSnippet?: string;
 };
 
+export type StudyEventType =
+  | 'node_assessment'
+  | 'coding_lab'
+  | 'srs_review'
+  | 'flashcards'
+  | 'daily_challenge'
+  | 'practice'
+  | 'skill_assessment';
+
+export type AnalyticsSummary = {
+  activeSeconds: number;
+  questionsAnswered: number;
+  correctAnswers: number;
+  sessions: number;
+  learnedNodes: number;
+  masteredNodes: number;
+};
+
+export type DailyActivity = { date: string; activeSeconds: number; eventCount: number };
+export type WeeklyPerformance = { weekStart: string; xpEarned: number; activeSeconds: number; sessions: number; nodesAdvanced: number; accuracy: number | null };
+export type WeakTopic = { nodeId: string; title: string; pathId: string; accuracy: number; attempts: number };
+export type PathPerformance = { pathId: string; accuracy: number | null; attempts: number; activeSeconds: number; masteryPercent: number; averageDepth: number };
+
 // ─── Shop / Reward Types ──────────────────────────────────
 
 export type RewardType = 'time' | 'once';
@@ -108,6 +131,7 @@ export type GameState = {
   nodeDepths: Record<string, NodeDepth>;
   completedNodes: string[];    // skill node IDs
   completedLabs: string[];     // coding lab node IDs
+  testedOutNodes: string[];
   masteredNodeCount: number;
   claimedMasterRewardMilestones: number[];
   perfectLessons: number;      // lessons completed with zero errors

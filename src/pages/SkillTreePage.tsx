@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useGameState } from '@/context/GameStateContext';
 import { LEARNING_PATHS, isNodeUnlocked } from '@/config/paths';
@@ -6,6 +6,9 @@ import type { SkillNode, NodeDepth, SessionMode } from '@/types';
 import SessionModal from '@/components/SessionModal';
 import NodeDepthModal from '@/components/NodeDepthModal';
 import PathCatalog from '@/components/PathCatalog';
+import GlobalNodeSearch from '@/components/GlobalNodeSearch';
+import SkillAssessmentModal from '@/components/SkillAssessmentModal';
+import { getAssessmentStatuses } from '@/services/assessmentService';
 
 document.title = 'Skill Tree — DevQuest';
 
@@ -34,6 +37,8 @@ function NodeCard({
   pathColor,
   onClick,
   index,
+  testedOut,
+  highlighted,
 }: {
   node: SkillNode;
   state: NodeState;
@@ -41,6 +46,8 @@ function NodeCard({
   pathColor: string;
   onClick: () => void;
   index: number;
+  testedOut: boolean;
+  highlighted: boolean;
 }) {
   const statusIcon = state === 'completed' ? '✅' : state === 'locked' ? '🔒' : '▶';
 
@@ -53,7 +60,7 @@ function NodeCard({
       )}
       <button
         id={`node-${node.id}`}
-        className={`node-card node-card--${state}`}
+        className={`node-card node-card--${state}${highlighted ? ' node-card--highlighted' : ''}`}
         style={{ '--node-color': pathColor } as React.CSSProperties}
         onClick={onClick}
         disabled={state === 'locked'}
@@ -64,6 +71,7 @@ function NodeCard({
           <span className="node-card__title">{node.title}</span>
           <span className="node-card__desc">{node.description}</span>
           <span className="node-card__time">~{node.estimatedMinutes} min</span>
+          {testedOut && <span className="node-card__tested">Tested out</span>}
           <span className="node-card__depth-dots" aria-label={`Depth ${depth} of 3`}>
             {[1, 2, 3].map((value) => (
               <span key={value} className={`node-card__depth-dot ${depth >= value ? 'node-card__depth-dot--on' : ''}`} />
@@ -83,7 +91,7 @@ function NodeCard({
 // Main page
 // ─────────────────────────────────────────────────────────────
 export default function SkillTreePage() {
-  const { completedNodes, nodeDepths, completedLabs, lives, selectedPathId: savedPathId, setSelectedPath } = useGameState();
+  const { completedNodes, nodeDepths, completedLabs, testedOutNodes, lives, selectedPathId: savedPathId, setSelectedPath, applyTestedOutNodes } = useGameState();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -95,6 +103,10 @@ export default function SkillTreePage() {
   const [selectedPathId, setSelectedPathId] = useState(initialPathId);
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
   const [sessionConfig, setSessionConfig] = useState<{ nodeId: string; depth: NodeDepth; mode: SessionMode; isReplay: boolean } | null>(null);
+  const [assessmentOpen, setAssessmentOpen] = useState(false);
+  const [assessmentPassed, setAssessmentPassed] = useState<Set<string>>(new Set());
+  const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
+  const [lockedNotice, setLockedNotice] = useState<string | null>(null);
 
   const path = LEARNING_PATHS.find((p) => p.id === selectedPathId)!;
 
@@ -109,6 +121,28 @@ export default function SkillTreePage() {
 
   const doneCount = path.nodes.filter((n) => completedNodes.includes(n.id)).length;
 
+  useEffect(() => {
+    void getAssessmentStatuses().then((statuses) => {
+      setAssessmentPassed(new Set(Array.from(statuses.entries()).filter(([, value]) => value.passed).map(([pathId]) => pathId)));
+    });
+  }, []);
+
+  useEffect(() => {
+    const focusNodeId = (location.state as { focusNodeId?: string } | null)?.focusNodeId;
+    if (!focusNodeId) return;
+    const targetPath = LEARNING_PATHS.find((candidate) => candidate.nodes.some((node) => node.id === focusNodeId));
+    if (!targetPath) return;
+    setSelectedPathId(targetPath.id);
+    setSelectedPath(targetPath.id);
+    setHighlightedNodeId(focusNodeId);
+    window.setTimeout(() => {
+      document.getElementById(`node-${focusNodeId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const node = targetPath.nodes.find((candidate) => candidate.id === focusNodeId);
+      if (node && isNodeUnlocked(node, completedNodes)) setActiveNodeId(focusNodeId);
+    }, 100);
+    window.setTimeout(() => setHighlightedNodeId(null), 2500);
+  }, [location.state, completedNodes, setSelectedPath]);
+
   return (
     <div className="page skill-tree-page">
       {/* ── Lives warning banner ─────────────────────────── */}
@@ -120,6 +154,28 @@ export default function SkillTreePage() {
           </button>
         </div>
       )}
+
+      <GlobalNodeSearch
+        completedNodes={completedNodes}
+        nodeDepths={nodeDepths}
+        onSelect={(result) => {
+          setSelectedPathId(result.pathId);
+          setSelectedPath(result.pathId);
+          setHighlightedNodeId(result.node.id);
+          window.setTimeout(() => document.getElementById(`node-${result.node.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+          if (result.status !== 'locked') setActiveNodeId(result.node.id);
+          if (result.status === 'locked') {
+            const requirements = result.node.prerequisiteIds
+              .map((id) => LEARNING_PATHS.flatMap((candidate) => candidate.nodes).find((node) => node.id === id)?.title ?? id)
+              .join(', ');
+            setLockedNotice(`Complete Learn in ${requirements} to unlock ${result.node.title}.`);
+          } else {
+            setLockedNotice(null);
+          }
+          window.setTimeout(() => setHighlightedNodeId(null), 2500);
+        }}
+      />
+      {lockedNotice && <div className="search-lock-notice" role="status">🔒 {lockedNotice}</div>}
 
       {/* ── Path tabs ────────────────────────────────────── */}
       <PathCatalog
@@ -142,6 +198,11 @@ export default function SkillTreePage() {
           <h1 className="path-header__title">{path.title}</h1>
           <p className="path-header__desc">{path.description}</p>
         </div>
+        {assessmentPassed.has(path.id) ? (
+          <span className="path-assessment-tested">Level tested</span>
+        ) : (
+          <button className="btn btn-ghost btn-sm path-assessment-btn" onClick={() => setAssessmentOpen(true)}>Test your level</button>
+        )}
         <ProgressPill done={doneCount} total={path.nodes.length} color={path.color} />
       </div>
 
@@ -157,6 +218,8 @@ export default function SkillTreePage() {
               depth={nodeDepths[node.id] ?? 0}
               pathColor={path.color}
               index={idx}
+              testedOut={testedOutNodes.includes(node.id)}
+              highlighted={highlightedNodeId === node.id}
               onClick={() => {
                 if (state !== 'locked') setActiveNodeId(node.id);
               }}
@@ -193,6 +256,17 @@ export default function SkillTreePage() {
           mode={sessionConfig.mode}
           isReplay={sessionConfig.isReplay}
           onClose={() => setSessionConfig(null)}
+        />
+      )}
+
+      {assessmentOpen && (
+        <SkillAssessmentModal
+          path={path}
+          onClose={() => setAssessmentOpen(false)}
+          onPassed={(nodeIds) => {
+            applyTestedOutNodes(nodeIds);
+            setAssessmentPassed((current) => new Set(current).add(path.id));
+          }}
         />
       )}
     </div>

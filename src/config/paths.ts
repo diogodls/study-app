@@ -966,7 +966,7 @@ export function validateLearningPaths(paths: LearningPath[]): void {
     if (path.releaseWave && (path.nodes.length < 8 || path.nodes.length > 10)) {
       throw new Error(`Expansion path ${path.id} must contain 8-10 nodes`);
     }
-    if (path.releaseWave && !path.nodes.at(-1)?.capstone) {
+    if (path.releaseWave && !path.nodes[path.nodes.length - 1]?.capstone) {
       throw new Error(`Expansion path ${path.id} must end with a capstone`);
     }
 

@@ -19,6 +19,7 @@ import { saveQuizResult } from '@/services/quizResultsService';
 import { upsertSrsSchedule } from '@/services/srsService';
 import { playCorrect, playWrong, playLevelUp, playCoins } from '@/services/soundService';
 import { getCachedContent, saveCachedContent } from '@/services/contentCacheService';
+import { createActiveTimeTracker, recordStudyEvent } from '@/services/analyticsService';
 import GeminiLoadingState from '@/components/GeminiLoadingState';
 import GeminiErrorCard from '@/components/GeminiErrorCard';
 import { AvatarSprite, CompanionDisplay } from '@/components/PixelSprites';
@@ -534,6 +535,7 @@ interface SessionModalProps {
 
 export default function SessionModal({
   nodeId,
+  pathId,
   practiceQuestion,
   onClose,
   practiceMode = false,
@@ -595,6 +597,31 @@ export default function SessionModal({
   const answerSubmittingRef = useRef(false);
   const continueSubmittingRef = useRef(false);
   const handleCheckRef = useRef<(timedOut?: boolean) => void>(() => undefined);
+  const trackerRef = useRef<ReturnType<typeof createActiveTimeTracker> | null>(null);
+  const eventRecordedRef = useRef(false);
+  const eventKeyRef = useRef(`session:${nodeId ?? 'practice'}:${mode}:${Date.now()}`);
+
+  const recordSessionEvent = useCallback((outcome: string, xpDelta = 0, spDelta = 0) => {
+    if (eventRecordedRef.current) return;
+    eventRecordedRef.current = true;
+    const eventType =
+      dailyChallengeMode ? 'daily_challenge'
+      : mode === 'review' ? 'srs_review'
+      : practiceMode || recoveryMode ? 'practice'
+      : 'node_assessment';
+    void recordStudyEvent({
+      eventKey: eventKeyRef.current,
+      eventType,
+      nodeId,
+      pathId: pathId || node?.pathId,
+      depth,
+      outcome,
+      activeSeconds: trackerRef.current?.seconds() ?? 0,
+      xpDelta,
+      spDelta,
+      metadata: { mode, replay: isReplay },
+    });
+  }, [dailyChallengeMode, mode, practiceMode, recoveryMode, nodeId, pathId, node?.pathId, depth, isReplay]);
 
   useEffect(() => {
     if (loadedRef.current) return;
@@ -647,11 +674,13 @@ export default function SessionModal({
   }, [lessonTopic, practiceMode, recoveryMode, dailyChallengeMode, dailyChallengeDate, nodeId, geminiApiKey, selectedModel, language, mode, depth, nodeMode, loadAttempt]);
 
   useEffect(() => {
+    trackerRef.current = createActiveTimeTracker();
     document.body.style.overflow = 'hidden';
     document.body.classList.add('session-modal-open');
     return () => {
       document.body.style.overflow = '';
       document.body.classList.remove('session-modal-open');
+      trackerRef.current?.stop();
     };
   }, []);
 
@@ -696,8 +725,9 @@ export default function SessionModal({
     if (nodeId && !practiceMode && !recoveryMode && !dailyChallengeMode) {
       await upsertSrsSchedule(nodeId, false, depth);
     }
+    recordSessionEvent('failed');
     setView('failure');
-  }, [nodeId, practiceMode, recoveryMode, dailyChallengeMode, depth]);
+  }, [nodeId, practiceMode, recoveryMode, dailyChallengeMode, depth, recordSessionEvent]);
 
   const applyRewards = useCallback((teachBackScore?: number) => {
     const rewards = DEPTH_REWARDS[practiceMode || recoveryMode ? 1 : depth];
@@ -749,9 +779,10 @@ export default function SessionModal({
       lifeRecovered,
       teachBackScore,
     });
+    recordSessionEvent('passed', xpGained, spGained);
     setView('victory');
     if (mode === 'review') onReviewComplete?.();
-  }, [depth, practiceMode, recoveryMode, quizState.wrongCount, incrementPerfectLessons, labCompletedThisRun, completedLabs, nodeId, addXp, addStudyPoints, isReplay, alreadyCompleted, completeDepth, gainLife, incrementLifeRecoveries, mode, onReviewComplete]);
+  }, [depth, practiceMode, recoveryMode, quizState.wrongCount, incrementPerfectLessons, labCompletedThisRun, completedLabs, nodeId, addXp, addStudyPoints, isReplay, alreadyCompleted, completeDepth, gainLife, incrementLifeRecoveries, mode, onReviewComplete, recordSessionEvent]);
 
   const handleCheck = useCallback(async (timedOut = false) => {
     if (!session || answerSubmittingRef.current || quizState.answered !== 'idle') return;
@@ -830,6 +861,7 @@ export default function SessionModal({
           isPerfect: finalCorrectCount === total,
           lifeRecovered: false,
         });
+        recordSessionEvent('passed', reward.xpGained, reward.spGained);
         setView('victory');
         onDailyChallengeFinished?.();
         return;
@@ -849,13 +881,22 @@ export default function SessionModal({
       continueSubmittingRef.current = false;
       setActionBusy(false);
     }
-  }, [session, quizState.index, quizState.correctCount, depth, practiceMode, recoveryMode, mode, finalizeFailure, dailyChallengeMode, onDailyChallengePassed, onDailyChallengeFinished, nodeId, applyRewards, onReviewComplete]);
+  }, [session, quizState.index, quizState.correctCount, depth, practiceMode, recoveryMode, mode, finalizeFailure, dailyChallengeMode, onDailyChallengePassed, onDailyChallengeFinished, nodeId, applyRewards, onReviewComplete, recordSessionEvent]);
 
   const handleLabComplete = useCallback(() => {
     setLabCompletedThisRun(true);
     if (nodeId) markDeepenLabComplete(nodeId);
+    void recordStudyEvent({
+      eventKey: `${eventKeyRef.current}:lab`,
+      eventType: 'coding_lab',
+      nodeId,
+      pathId: pathId || node?.pathId,
+      depth,
+      outcome: 'completed',
+      activeSeconds: trackerRef.current?.seconds() ?? 0,
+    });
     setView('lesson');
-  }, [nodeId, markDeepenLabComplete]);
+  }, [nodeId, pathId, node?.pathId, depth, markDeepenLabComplete]);
 
   const handleTeachBackSuccess = useCallback((score: number) => {
     if (score < MASTER_TEACHBACK_MIN) {
@@ -866,8 +907,16 @@ export default function SessionModal({
   }, [applyRewards]);
 
   const handleBackdropClick = useCallback((event: React.MouseEvent) => {
-    if (event.target === event.currentTarget) onClose();
-  }, [onClose]);
+    if (event.target === event.currentTarget) {
+      recordSessionEvent('abandoned');
+      onClose();
+    }
+  }, [onClose, recordSessionEvent]);
+
+  const closeSession = useCallback(() => {
+    recordSessionEvent('abandoned');
+    onClose();
+  }, [onClose, recordSessionEvent]);
 
   if (!node && !practiceQuestion) return null;
 
@@ -882,7 +931,7 @@ export default function SessionModal({
               {node && <span className="modal-subtitle">~{node.estimatedMinutes} min · {mode}</span>}
             </div>
           </div>
-          <button id="modal-close-btn" className="modal-close" onClick={onClose} aria-label="Close">?</button>
+          <button id="modal-close-btn" className="modal-close" onClick={closeSession} aria-label="Close">?</button>
         </div>
 
         <div className="modal-body">
@@ -892,13 +941,13 @@ export default function SessionModal({
           {view === 'lesson' && session && (
             <CheatSheetView
               session={session}
-              node={node}
+              node={node ?? undefined}
               noteContextId={noteContextId}
               allowQuiz={mode !== 'replay-view'}
               allowLab={showLab}
               onStartQuiz={handleStartQuiz}
               onOpenLab={() => setView('lab')}
-              onClose={onClose}
+              onClose={closeSession}
             />
           )}
 
@@ -952,7 +1001,7 @@ export default function SessionModal({
                 setView('quiz');
               }}
               secondaryLabel="Close"
-              onSecondary={onRetryRecovery ?? onClose}
+              onSecondary={onRetryRecovery ?? closeSession}
             />
           )}
 

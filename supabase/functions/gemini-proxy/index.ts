@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-type RequestType = 'lesson' | 'lab' | 'practice' | 'master' | 'flashcards' | 'daily-challenge' | 'evaluate-teachback';
+type RequestType = 'lesson' | 'lab' | 'practice' | 'master' | 'flashcards' | 'daily-challenge' | 'assessment' | 'evaluate-teachback';
 type Depth = 'learn' | 'deepen' | 'master';
 type Language = 'en' | 'pt-BR';
 
@@ -120,6 +120,23 @@ Rules:
 - explanations must be concise and useful`;
 }
 
+function assessmentPrompt(topic: string, language: Language) {
+  return `You are DevQuest AI. ${languageInstruction(language)} Create a placement assessment covering these three introductory skill nodes: ${topic}
+Respond with ONLY valid JSON.
+Schema:
+{
+  "title": "Skill Assessment",
+  "cheatSheet": "one short paragraph explaining that this is a placement test",
+  "quizzes": [{ "question": "...", "codeSnippet": "optional", "options": ["A","B","C","D"], "correctIndex": 0, "explanation": "..." }]
+}
+Rules:
+- exactly 5 practical questions
+- collectively cover all three supplied nodes
+- at least 3 questions must use code, commands, configuration, or concrete scenarios
+- difficulty should verify working knowledge, not obscure trivia
+- explanations must teach why the answer is correct`;
+}
+
 function masterPrompt(topic: string, language: Language) {
   return `You are DevQuest AI. ${languageInstruction(language)} Generate a master-level speed challenge about: ${topic}
 Respond with ONLY valid JSON.
@@ -170,6 +187,7 @@ function buildPrompt(type: RequestType, topic: string, depth: Depth, language: L
   if (type === 'lab') return labPrompt(topic, language);
   if (type === 'practice') return practicePrompt(topic, language);
   if (type === 'daily-challenge') return dailyChallengePrompt(topic, language);
+  if (type === 'assessment') return assessmentPrompt(topic, language);
   if (type === 'master') return masterPrompt(topic, language);
   if (type === 'flashcards') return flashcardsPrompt(topic, language);
   if (type === 'evaluate-teachback') return evaluatePrompt(topic, explanation ?? '', language);
