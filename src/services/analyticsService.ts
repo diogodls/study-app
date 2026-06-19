@@ -9,6 +9,7 @@ import type {
   WeakTopic,
   WeeklyPerformance,
 } from '@/types';
+import { queueOfflineAction } from '@/services/offlineStorageService';
 
 export async function recordStudyEvent(input: {
   eventKey: string;
@@ -24,8 +25,7 @@ export async function recordStudyEvent(input: {
 }): Promise<void> {
   const { data } = await supabase.auth.getUser();
   if (!data.user) return;
-  const { error } = await supabase.from('user_study_events').upsert({
-    user_id: data.user.id,
+  const payload = {
     event_key: input.eventKey,
     event_type: input.eventType,
     node_id: input.nodeId ?? null,
@@ -36,8 +36,17 @@ export async function recordStudyEvent(input: {
     xp_delta: input.xpDelta ?? 0,
     sp_delta: input.spDelta ?? 0,
     metadata: input.metadata ?? {},
+    occurred_at: new Date().toISOString(),
+  };
+  if (!navigator.onLine) {
+    await queueOfflineAction('study_event', payload, input.eventKey);
+    return;
+  }
+  const { error } = await supabase.from('user_study_events').upsert({
+    user_id: data.user.id,
+    ...payload,
   }, { onConflict: 'user_id,event_key', ignoreDuplicates: true });
-  if (error) console.warn('Unable to record study event:', error.message);
+  if (error) await queueOfflineAction('study_event', payload, input.eventKey);
 }
 
 export function createActiveTimeTracker() {

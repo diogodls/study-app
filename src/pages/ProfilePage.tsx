@@ -11,6 +11,7 @@ import { getLevel, getLevelTitle, getProgressToNextLevel, getCompanionStage } fr
 import { LEARNING_PATHS } from '@/config/paths';
 import { AvatarSprite, CompanionDisplay } from '@/components/PixelSprites';
 import ProfileAnalytics from '@/components/ProfileAnalytics';
+import RoadmapEditor from '@/components/RoadmapEditor';
 
 type ProfileTab = 'overview' | 'analytics' | 'badges';
 
@@ -84,6 +85,7 @@ export default function ProfilePage() {
   return (
     <div className="page stagger-children">
       <ProfileTabs active={activeTab} onChange={setActiveTab} />
+      <RoadmapEditor />
       {/* ── Character Card ─────────────────────────────── */}
       <div
         className={`card ${cosmeticClass}`}

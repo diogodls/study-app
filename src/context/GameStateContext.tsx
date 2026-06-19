@@ -31,6 +31,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/services/supabaseClient';
 import { applyTheme } from '@/services/themeService';
 import { recordStudyDay } from '@/services/streakService';
+import { queueOfflineAction } from '@/services/offlineStorageService';
 
 import type {
   GameState,
@@ -490,7 +491,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   }, [state]);
 
   useEffect(() => {
-    if (!user || !cloudLoadedRef.current || cloudLoading) return;
+    if (!user || !cloudLoadedRef.current || cloudLoading || !navigator.onLine) return;
     const timeoutId = window.setTimeout(() => {
       saveCloudProgress(user.id, state).catch((error) => {
         console.error('Failed to save cloud progress', error);
@@ -677,13 +678,24 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     }
 
     if (user) {
-      void supabase.from('user_node_depths').upsert({
-        user_id: user.id,
-        node_id: nodeId,
-        depth,
-        deepen_lab_completed: mergedState.completedLabs.includes(nodeId),
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id,node_id' });
+      const occurredAt = new Date().toISOString();
+      const eventKey = `depth:${nodeId}:${depth}:${occurredAt}`;
+      if (!navigator.onLine) {
+        void queueOfflineAction('depth_completion', {
+          p_node_id: nodeId,
+          p_depth: depth,
+          p_event_key: eventKey,
+          p_occurred_at: occurredAt,
+        }, eventKey);
+      } else {
+        void supabase.from('user_node_depths').upsert({
+          user_id: user.id,
+          node_id: nodeId,
+          depth,
+          deepen_lab_completed: mergedState.completedLabs.includes(nodeId),
+          updated_at: occurredAt,
+        }, { onConflict: 'user_id,node_id' });
+      }
 
       const newlyUnlockedGear = mergedGear.filter((gearId) => !prev.unlockedGear.includes(gearId));
       if (newlyUnlockedGear.length) {
@@ -715,13 +727,20 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     });
 
     if (user) {
-      void supabase.from('user_node_depths').upsert({
-        user_id: user.id,
+      const payload = {
         node_id: nodeId,
         depth: stateRef.current.nodeDepths[nodeId] ?? 0,
-        deepen_lab_completed: true,
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id,node_id' });
+      };
+      if (!navigator.onLine) {
+        void queueOfflineAction('lab_completion', payload, `lab:${nodeId}`);
+      } else {
+        void supabase.from('user_node_depths').upsert({
+          user_id: user.id,
+          ...payload,
+          deepen_lab_completed: true,
+        }, { onConflict: 'user_id,node_id' });
+      }
     }
   }, [user]);
 

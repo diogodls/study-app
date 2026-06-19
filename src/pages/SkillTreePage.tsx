@@ -9,6 +9,7 @@ import PathCatalog from '@/components/PathCatalog';
 import GlobalNodeSearch from '@/components/GlobalNodeSearch';
 import SkillAssessmentModal from '@/components/SkillAssessmentModal';
 import { getAssessmentStatuses } from '@/services/assessmentService';
+import { orderPathsByRoadmap } from '@/config/roadmaps';
 
 document.title = 'Skill Tree — DevQuest';
 
@@ -91,7 +92,7 @@ function NodeCard({
 // Main page
 // ─────────────────────────────────────────────────────────────
 export default function SkillTreePage() {
-  const { completedNodes, nodeDepths, completedLabs, testedOutNodes, lives, selectedPathId: savedPathId, setSelectedPath, applyTestedOutNodes } = useGameState();
+  const { completedNodes, nodeDepths, completedLabs, testedOutNodes, lives, selectedPathId: savedPathId, roadmapGoalId, roadmapPathIds, setSelectedPath, applyTestedOutNodes } = useGameState();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -107,6 +108,7 @@ export default function SkillTreePage() {
   const [assessmentPassed, setAssessmentPassed] = useState<Set<string>>(new Set());
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const [lockedNotice, setLockedNotice] = useState<string | null>(null);
+  const orderedPaths = orderPathsByRoadmap(roadmapPathIds);
 
   const path = LEARNING_PATHS.find((p) => p.id === selectedPathId)!;
 
@@ -179,9 +181,10 @@ export default function SkillTreePage() {
 
       {/* ── Path tabs ────────────────────────────────────── */}
       <PathCatalog
-        paths={LEARNING_PATHS}
+        paths={orderedPaths}
         selectedPathId={selectedPathId}
         nodeDepths={nodeDepths}
+        roadmapGoalId={roadmapGoalId}
         onSelect={(pathId) => {
           setSelectedPathId(pathId);
           setSelectedPath(pathId);
@@ -201,7 +204,7 @@ export default function SkillTreePage() {
         {assessmentPassed.has(path.id) ? (
           <span className="path-assessment-tested">Level tested</span>
         ) : (
-          <button className="btn btn-ghost btn-sm path-assessment-btn" onClick={() => setAssessmentOpen(true)}>Test your level</button>
+          <button className="btn btn-ghost btn-sm path-assessment-btn" disabled={!navigator.onLine} onClick={() => setAssessmentOpen(true)}>Test your level</button>
         )}
         <ProgressPill done={doneCount} total={path.nodes.length} color={path.color} />
       </div>

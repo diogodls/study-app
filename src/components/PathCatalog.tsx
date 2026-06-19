@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { LearningPath, PathCategory, NodeDepth } from '@/types';
+import { getRoadmapRole } from '@/config/roadmaps';
 
 const CATEGORY_ORDER: PathCategory[] = ['Foundations', 'Development', 'Infrastructure', 'Architecture', 'Specializations'];
 
@@ -8,11 +9,13 @@ export default function PathCatalog({
   selectedPathId,
   nodeDepths,
   onSelect,
+  roadmapGoalId,
 }: {
   paths: LearningPath[];
   selectedPathId: string;
   nodeDepths: Record<string, NodeDepth>;
   onSelect: (pathId: string) => void;
+  roadmapGoalId: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const selectedPath = paths.find((path) => path.id === selectedPathId) ?? paths[0];
@@ -61,6 +64,7 @@ export default function PathCatalog({
                       <span className="path-catalog__card-icon">{path.icon}</span>
                       <span className="path-catalog__card-body">
                         <strong>{path.title}</strong>
+                        {roadmapGoalId && <span className={`roadmap-role roadmap-role--${getRoadmapRole(roadmapGoalId, path.id)}`}>{getRoadmapRole(roadmapGoalId, path.id)}</span>}
                         <small>{path.nodes.length} nodes · {percent}% learned</small>
                         {recommendations && <em>Suggested after: {recommendations}</em>}
                       </span>

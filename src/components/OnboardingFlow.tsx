@@ -14,6 +14,7 @@ import { LEARNING_PATHS } from '@/config/paths';
 import { generateLesson } from '@/services/geminiService';
 import type { AvatarId, CompanionSpecies } from '@/types';
 import { AvatarSprite, CompanionDisplay } from '@/components/PixelSprites';
+import { ROADMAP_PRESETS, getDefaultRoadmapPathIds } from '@/config/roadmaps';
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -311,11 +312,15 @@ function StepApiKey({
 
 function StepPath({
   selected,
+  goalId,
+  onGoal,
   onSelect,
   onNext,
   onBack,
 }: {
   selected: string | null;
+  goalId: string | null;
+  onGoal: (goalId: string | null) => void;
   onSelect: (id: string) => void;
   onNext: () => void;
   onBack: () => void;
@@ -326,6 +331,14 @@ function StepPath({
       <p className="onboarding-step-sub">
         You can explore all paths later. This unlocks your first lesson.
       </p>
+      <div className="onboarding-roadmap-goals">
+        <button className={!goalId ? 'active' : ''} onClick={() => onGoal(null)}>Explore freely</button>
+        {ROADMAP_PRESETS.map((preset) => (
+          <button key={preset.id} className={goalId === preset.id ? 'active' : ''} onClick={() => onGoal(preset.id)}>
+            {preset.title}
+          </button>
+        ))}
+      </div>
 
       <div className="path-selection-grid">
         {LEARNING_PATHS.map((path) => (
@@ -499,6 +512,7 @@ export default function OnboardingFlow() {
   const [heroName, setHeroName] = useState('');
   const [apiKey, setLocalApiKey] = useState('');
   const [pathId, setPathId] = useState<string | null>(null);
+  const [roadmapGoalId, setRoadmapGoalId] = useState<string | null>(null);
   const [companionSpecies, setCompanionSpecies] = useState<CompanionSpecies>('spark');
 
   // Prevent double-submit on finish
@@ -516,12 +530,14 @@ export default function OnboardingFlow() {
       characterName: heroName.trim() || 'Hero',
       startingPathId: pathId ?? LEARNING_PATHS[0].id,
       companionSpecies,
+      roadmapGoalId,
+      roadmapPathIds: roadmapGoalId ? getDefaultRoadmapPathIds(roadmapGoalId) : [],
       geminiApiKey: apiKey.trim() || undefined,
     });
 
     // Navigate to skill tree with starting path state
     navigate('/', { state: { startingPathId: pathId ?? LEARNING_PATHS[0].id } });
-  }, [avatarId, heroName, apiKey, pathId, companionSpecies, completeOnboarding, navigate]);
+  }, [avatarId, heroName, apiKey, pathId, companionSpecies, roadmapGoalId, completeOnboarding, navigate]);
 
   return (
     <div className="onboarding-shell">
@@ -557,6 +573,11 @@ export default function OnboardingFlow() {
         {step === 5 && (
           <StepPath
             selected={pathId}
+            goalId={roadmapGoalId}
+            onGoal={(goalId) => {
+              setRoadmapGoalId(goalId);
+              if (goalId) setPathId(getDefaultRoadmapPathIds(goalId)[0] ?? null);
+            }}
             onSelect={setPathId}
             onNext={next}
             onBack={back}

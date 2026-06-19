@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Home, Dumbbell, ShoppingBag, User, Settings } from 'lucide-react';
 import { useGameState } from '@/context/GameStateContext';
 import type { ReactNode } from 'react';
+import OfflineStatus from '@/components/OfflineStatus';
 
 type NavItem = {
   path: string;
@@ -32,6 +33,7 @@ export default function Layout({ children, activePath }: LayoutProps) {
     <div className="app-layout">
       {/* ── Fixed Header ───────────────────────────────────── */}
       <header className="app-header" id="app-header">
+        <OfflineStatus />
         <div
           style={{
             display: 'flex',
@@ -111,7 +113,11 @@ export default function Layout({ children, activePath }: LayoutProps) {
                 key={path}
                 id={`nav-${label.toLowerCase()}`}
                 className={`nav-item ${isActive ? 'active' : ''}`}
-                onClick={() => navigate(path)}
+                onClick={() => {
+                  if (!navigator.onLine && path === '/shop') return;
+                  navigate(path);
+                }}
+                disabled={!navigator.onLine && path === '/shop'}
                 aria-label={label}
                 aria-current={isActive ? 'page' : undefined}
               >
