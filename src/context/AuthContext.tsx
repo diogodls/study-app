@@ -70,11 +70,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshKeyStatus]);
 
   const signInWithEmail = useCallback(async (email: string, password: string) => {
+    if (!navigator.onLine) throw new Error('Connect to the internet to sign in.');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
   }, []);
 
   const saveGeminiKey = useCallback(async (apiKey: string) => {
+    if (!navigator.onLine) throw new Error('Connect to the internet to update your Gemini key.');
     const { error } = await supabase.functions.invoke('gemini-proxy', {
       body: { action: 'save-key', apiKey },
     });
@@ -83,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const deleteGeminiKey = useCallback(async () => {
+    if (!navigator.onLine) throw new Error('Connect to the internet to remove your Gemini key.');
     const { error } = await supabase.functions.invoke('gemini-proxy', {
       body: { action: 'delete-key' },
     });
@@ -91,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUpWithEmail = useCallback(async (email: string, password: string, geminiApiKey: string) => {
+    if (!navigator.onLine) throw new Error('Connect to the internet to create an account.');
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
     if (data.session) {
@@ -105,6 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    if (!navigator.onLine) throw new Error('Connect to the internet to sign out safely.');
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   }, []);

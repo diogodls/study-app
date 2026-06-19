@@ -4094,6 +4094,22 @@ body.session-modal-open .app-header {
   font-weight: 800;
 }
 
+.offline-feature-notice,
+.offline-blocked-page {
+  border-color: var(--warning);
+  background: var(--warning-bg);
+  color: var(--text);
+}
+
+.offline-blocked-page {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.offline-blocked-page h1 {
+  margin-bottom: 0.5rem;
+}
+
 @media (min-width: 850px) {
   .code-runner .sp-layout {
     grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);

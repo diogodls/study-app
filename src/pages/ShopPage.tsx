@@ -15,6 +15,7 @@ import type { Reward, CosmeticType } from '@/types';
 import { playCoins } from '@/services/soundService';
 import DopamineTimer from '@/components/DopamineTimer';
 import { AvatarSprite, CompanionDisplay } from '@/components/PixelSprites';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 document.title = 'Reward Shop — DevQuest';
 
@@ -361,8 +362,12 @@ function CosmeticsTab() {
 type ShopTab = 'rewards' | 'cosmetics';
 
 export default function ShopPage() {
-  document.title = 'Reward Shop — DevQuest';
+  const online = useOnlineStatus();
   const [activeTab, setActiveTab] = useState<ShopTab>('rewards');
+  if (!online) {
+    return <div className="page"><div className="card offline-blocked-page"><h1>Shop unavailable offline</h1><p>Reconnect to buy, equip or redeem rewards safely.</p></div></div>;
+  }
+  document.title = 'Reward Shop — DevQuest';
 
   return (
     <div className="page shop-page">

@@ -32,6 +32,7 @@ import { supabase } from '@/services/supabaseClient';
 import { applyTheme } from '@/services/themeService';
 import { recordStudyDay } from '@/services/streakService';
 import { queueOfflineAction } from '@/services/offlineStorageService';
+import { syncOfflineQueue } from '@/services/offlineSyncService';
 
 import type {
   GameState,
@@ -499,6 +500,17 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     }, 500);
     return () => window.clearTimeout(timeoutId);
   }, [state, user, cloudLoading]);
+
+  useEffect(() => {
+    if (!user) return;
+    const syncAndPersist = async () => {
+      if (!navigator.onLine || !cloudLoadedRef.current) return;
+      await syncOfflineQueue();
+      await saveCloudProgress(user.id, stateRef.current);
+    };
+    window.addEventListener('online', syncAndPersist);
+    return () => window.removeEventListener('online', syncAndPersist);
+  }, [user]);
 
   useEffect(() => {
     setSoundEnabled(state.soundEnabled);

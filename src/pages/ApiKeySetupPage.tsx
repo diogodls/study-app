@@ -1,14 +1,20 @@
 import { useCallback, useState } from 'react';
 import { KeyRound, Loader, LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 export default function ApiKeySetupPage() {
   const { saveGeminiKey, signOut } = useAuth();
   const [apiKey, setApiKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const online = useOnlineStatus();
 
   const save = useCallback(async () => {
+    if (!online) {
+      setError('Conecte-se à internet para salvar a chave Gemini.');
+      return;
+    }
     const value = apiKey.trim();
     if (value.length < 20) {
       setError('Insira uma chave válida da API Gemini.');
@@ -24,7 +30,7 @@ export default function ApiKeySetupPage() {
     } finally {
       setLoading(false);
     }
-  }, [apiKey, saveGeminiKey]);
+  }, [apiKey, saveGeminiKey, online]);
 
   return (
     <div className="auth-shell">
@@ -47,10 +53,10 @@ export default function ApiKeySetupPage() {
           />
         </div>
         {error && <p className="auth-error">{error}</p>}
-        <button className="btn btn-primary btn-3d btn-full" disabled={loading} onClick={save}>
+        <button className="btn btn-primary btn-3d btn-full" disabled={loading || !online} onClick={save}>
           {loading ? <><Loader size={16} className="animate-spin" /> Salvando...</> : <><KeyRound size={16} /> Salvar chave</>}
         </button>
-        <button className="btn btn-secondary btn-full" disabled={loading} onClick={signOut}>
+        <button className="btn btn-secondary btn-full" disabled={loading || !online} onClick={signOut}>
           <LogOut size={16} /> Sair
         </button>
       </div>

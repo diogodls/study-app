@@ -22,6 +22,7 @@ import {
   type DailyChallenge,
 } from '@/services/dailyChallengeService';
 import type { NodeDepth, SessionMode } from '@/types';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 document.title = 'Practice Arena — DevQuest';
 
@@ -101,6 +102,7 @@ export default function PracticePage() {
   document.title = 'Practice Arena — DevQuest';
 
   const { lives, completedNodes, applyCloudRewardTotals } = useGameState();
+  const online = useOnlineStatus();
 
   const [input, setInput] = useState('');
   const [inputError, setInputError] = useState('');
@@ -126,6 +128,10 @@ export default function PracticePage() {
 
   // ── Start free-form practice ─────────────────────────────────
   const handleStartPractice = useCallback(() => {
+    if (!online) {
+      setInputError('Connect to the internet to generate a new lesson. Cached reviews remain available.');
+      return;
+    }
     if (!input.trim()) {
       setInputError('Please enter a topic or question first.');
       return;
@@ -137,7 +143,7 @@ export default function PracticePage() {
       recoveryMode: false,
     });
     setModalOpen(true);
-  }, [input]);
+  }, [input, online]);
 
   // ── Start life recovery ───────────────────────────────────────
   const handleStartRecovery = useCallback(() => {
@@ -277,12 +283,17 @@ export default function PracticePage() {
         <p className="practice-subtitle">Ask anything. Learn something. Earn XP.</p>
       </div>
 
-      <DailyChallengeCard
-        refreshKey={dailyRefreshKey}
-        onStart={(challenge) => void handleStartDailyChallenge(challenge)}
-      />
-
-      <WeeklyMissionsCard refreshKey={dailyRefreshKey + reviewRefreshKey} />
+      {online ? (
+        <>
+          <DailyChallengeCard
+            refreshKey={dailyRefreshKey}
+            onStart={(challenge) => void handleStartDailyChallenge(challenge)}
+          />
+          <WeeklyMissionsCard refreshKey={dailyRefreshKey + reviewRefreshKey} />
+        </>
+      ) : (
+        <div className="card offline-feature-notice">Daily Challenges and Weekly Missions reconnect automatically when you are online.</div>
+      )}
 
       <SrsReviewSection
         refreshKey={reviewRefreshKey}
@@ -317,6 +328,7 @@ export default function PracticePage() {
             id="generate-lesson-btn"
             className="btn btn-primary btn-3d"
             onClick={handleStartPractice}
+            disabled={!online}
           >
             ⚔️ Generate Lesson →
           </button>

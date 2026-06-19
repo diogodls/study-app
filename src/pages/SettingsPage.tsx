@@ -8,6 +8,7 @@ import {
   requestNotificationPermission,
   scheduleStudyReminder,
 } from '@/services/notificationService';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 export default function SettingsPage() {
   const {
@@ -30,6 +31,7 @@ export default function SettingsPage() {
   const [resetStep, setResetStep] = useState<0 | 1>(0);
   const [reminderStatus, setReminderStatus] = useState('');
   const [reminderBusy, setReminderBusy] = useState(false);
+  const online = useOnlineStatus();
 
   document.title = 'Settings - DevQuest';
 
@@ -125,6 +127,7 @@ export default function SettingsPage() {
           className="btn btn-secondary btn-sm"
           style={{ marginTop: '0.875rem' }}
           onClick={deleteGeminiKey}
+          disabled={!online}
         >
           <KeyRound size={14} /> Replace Gemini key
         </button>
@@ -280,7 +283,7 @@ export default function SettingsPage() {
         <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
           Signed in as {user?.email ?? 'your DevQuest account'}.
         </p>
-        <button id="sign-out-btn" className="btn btn-secondary btn-sm" onClick={signOut}>
+        <button id="sign-out-btn" className="btn btn-secondary btn-sm" disabled={!online} onClick={signOut}>
           <LogOut size={14} /> Sign out
         </button>
       </section>
@@ -309,6 +312,7 @@ export default function SettingsPage() {
             id={resetStep === 0 ? 'reset-data-btn' : 'confirm-reset-btn'}
             className={`btn btn-sm ${resetStep === 1 ? 'btn-danger' : 'btn-secondary'}`}
             onClick={handleReset}
+            disabled={!online}
           >
             {resetStep === 0 ? 'Reset All Data' : 'Yes, Delete Everything'}
           </button>

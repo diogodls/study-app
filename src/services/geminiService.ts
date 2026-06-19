@@ -21,6 +21,13 @@ export class GeminiNetworkError extends Error {
   }
 }
 
+export class GeminiOfflineError extends Error {
+  constructor() {
+    super('OFFLINE_CONTENT_UNAVAILABLE');
+    this.name = 'GeminiOfflineError';
+  }
+}
+
 export class GeminiParseError extends Error {
   constructor() {
     super('PARSE_ERROR');
@@ -69,6 +76,7 @@ type ProxyBody = {
 };
 
 async function callGeminiProxy(body: ProxyBody): Promise<string> {
+  if (!navigator.onLine) throw new GeminiOfflineError();
   const requestKey = JSON.stringify(body);
   const existing = inFlightRequests.get(requestKey);
   if (existing) return existing;
@@ -136,8 +144,22 @@ export function generateLesson(topic: string, _apiKey: string, model: string, de
   return request<CheatSheetSession>({ type: 'lesson', topic, model, depth, language });
 }
 
-export function generateCodingLab(topic: string, _apiKey: string, model: string, language: ContentLanguage): Promise<CodingLab> {
-  return request<CodingLab>({ type: 'lab', topic, model, language });
+export function normalizeCodingLab(lab: CodingLab): CodingLab {
+  const executableLanguage = lab.language === 'javascript' || lab.language === 'typescript';
+  const hasTestHarness = /\b(test|it)\s*\(/.test(lab.testCode)
+    && /\b(expect|assert)\b/.test(lab.testCode)
+    && /\b(import|require)\b/.test(lab.testCode);
+  const extension = lab.language === 'typescript' ? 'ts' : 'js';
+  return {
+    ...lab,
+    runnerMode: executableLanguage && hasTestHarness ? 'sandpack' : 'manual',
+    entryFile: lab.entryFile || lab.fileName || `solution.${extension}`,
+    testFile: lab.testFile || `solution.test.${extension}`,
+  };
+}
+
+export async function generateCodingLab(topic: string, _apiKey: string, model: string, language: ContentLanguage): Promise<CodingLab> {
+  return normalizeCodingLab(await request<CodingLab>({ type: 'lab', topic, model, language }));
 }
 
 export function generatePracticeSession(question: string, _apiKey: string, model: string, language: ContentLanguage): Promise<CheatSheetSession> {
