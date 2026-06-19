@@ -32,6 +32,7 @@ export type Quiz = {
   options: [string, string, string, string];
   correctIndex: 0 | 1 | 2 | 3;
   explanation: string;
+  hint: string;
 };
 
 export type CheatSheetSession = {
@@ -40,7 +41,7 @@ export type CheatSheetSession = {
   quizzes: Quiz[];
 };
 
-export type CodingLabLanguage = 'javascript' | 'typescript' | 'python';
+export type CodingLabLanguage = 'javascript' | 'typescript' | 'python' | 'shell' | 'yaml';
 
 export type CodingLab = {
   instructions: string;    // Markdown README
@@ -48,6 +49,9 @@ export type CodingLab = {
   testCode: string;        // Node.js assert-based tests
   fileName: string;        // e.g. "circularQueue.js"
   language: CodingLabLanguage;
+  runnerMode?: 'sandpack' | 'manual';
+  entryFile?: string;
+  testFile?: string;
 };
 
 export type Flashcard = {

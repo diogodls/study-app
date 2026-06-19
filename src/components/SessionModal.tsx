@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { lazy, Suspense, useState, useEffect, useRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -67,6 +67,8 @@ const LAB_BONUS = { xp: 500, sp: 100 };
 const MASTER_PASS_SCORE = 0.8;
 const MASTER_TEACHBACK_MIN = 7;
 const QUIZ_TIME_LIMIT_SECONDS = 15;
+const COMPANION_HINT_COST = 50;
+const CodeRunner = lazy(() => import('@/components/CodeRunner'));
 
 const mdComponents = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -169,6 +171,10 @@ function QuizView({
   onSelect,
   onCheck,
   onContinue,
+  onRetryQuestion,
+  hintVisible,
+  canUseHint,
+  onHint,
 }: {
   session: CheatSheetSession;
   quizState: QuizState;
@@ -178,6 +184,10 @@ function QuizView({
   onSelect: (idx: number) => void;
   onCheck: () => void;
   onContinue: () => void;
+  onRetryQuestion: () => void;
+  hintVisible: boolean;
+  canUseHint: boolean;
+  onHint: () => void;
 }) {
   const quiz = session.quizzes[quizState.index];
   const total = session.quizzes.length;
@@ -209,7 +219,7 @@ function QuizView({
             if (quizState.answered === 'correct') cls += ' quiz-option--correct';
             else if (quizState.answered === 'wrong') cls += ' quiz-option--wrong';
             else cls += ' quiz-option--selected';
-          } else if (quizState.answered !== 'idle' && index === quiz.correctIndex) {
+          } else if (quizState.answered === 'correct' && index === quiz.correctIndex) {
             cls += ' quiz-option--correct';
           }
           return (
@@ -230,7 +240,14 @@ function QuizView({
       {quizState.answered !== 'idle' && (
         <div className={`quiz-explanation quiz-explanation--${quizState.answered}`}>
           <span>{quizState.answered === 'correct' ? '?' : '?'}</span>
-          <p>{quiz.explanation}</p>
+          <p>{quizState.answered === 'correct' ? quiz.explanation : 'Not quite. Review the scenario, use your companion hint if needed, and try again.'}</p>
+        </div>
+      )}
+      {(quizState.answered === 'wrong' || hintVisible) && (
+        <div className="companion-hint">
+          {hintVisible
+            ? <p>🐾 {quiz.hint}</p>
+            : <button className="btn btn-ghost btn-sm" disabled={!canUseHint} onClick={onHint}>Ask companion for a hint · 50 SP</button>}
         </div>
       )}
 
@@ -239,6 +256,8 @@ function QuizView({
           <button id="check-answer-btn" className="btn btn-primary btn-3d" disabled={quizState.selected === null || busy} onClick={onCheck}>
             {busy ? 'Checking...' : 'Check Answer'}
           </button>
+        ) : quizState.answered === 'wrong' ? (
+          <button className="btn btn-primary btn-3d" disabled={busy} onClick={onRetryQuestion}>Try again</button>
         ) : (
           <button id="continue-btn" className="btn btn-primary btn-3d" disabled={busy} onClick={onContinue}>
             {busy ? 'Saving...' : quizState.index < total - 1 ? 'Continue ?' : 'Finish ?'}
@@ -312,6 +331,7 @@ function CodingLabView({
   language,
   onComplete,
   onBack,
+  onAttempt,
 }: {
   contextId: string;
   apiKey: string;
@@ -320,11 +340,12 @@ function CodingLabView({
   language: 'en' | 'pt-BR';
   onComplete: () => void;
   onBack: () => void;
+  onAttempt: (passed: number, total: number) => void;
 }) {
   const [lab, setLab] = useState<CodingLab | null>(null);
   const [labError, setLabError] = useState<Error | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'instructions' | 'boilerplate' | 'tests'>('instructions');
+  const [activeTab, setActiveTab] = useState<'instructions' | 'runner' | 'boilerplate' | 'tests'>('instructions');
   const [copied, setCopied] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const loadedRef = useRef(false);
@@ -374,20 +395,25 @@ function CodingLabView({
     setLoadAttempt((current) => current + 1);
   }} />;
 
+  const executable = lab.runnerMode === 'sandpack' && (lab.language === 'javascript' || lab.language === 'typescript');
   const currentContent = activeTab === 'instructions' ? lab.instructions : activeTab === 'boilerplate' ? lab.boilerplateCode : lab.testCode;
 
   return (
     <div className="modal-content">
       <div className="lab-tabs">
-        {(['instructions', 'boilerplate', 'tests'] as const).map((tab) => (
+        {(['instructions', ...(executable ? ['runner'] as const : []), 'boilerplate', 'tests'] as const).map((tab) => (
           <button key={tab} className={`lab-tab ${activeTab === tab ? 'lab-tab--active' : ''}`} onClick={() => setActiveTab(tab)}>
-            {tab === 'instructions' ? '?? Instructions' : tab === 'boilerplate' ? '?? Starter Code' : '?? Tests'}
+            {tab === 'instructions' ? 'Instructions' : tab === 'runner' ? 'Run Lab' : tab === 'boilerplate' ? 'Starter Code' : 'Tests'}
           </button>
         ))}
       </div>
       <div className="lab-content">
         {activeTab === 'instructions' ? (
           <div className="modal-prose"><ReactMarkdown components={mdComponents}>{lab.instructions}</ReactMarkdown></div>
+        ) : activeTab === 'runner' && executable ? (
+          <Suspense fallback={<GeminiLoadingState message="Loading code runner..." />}>
+            <CodeRunner lab={lab} onAttempt={onAttempt} onComplete={onComplete} />
+          </Suspense>
         ) : (
           <SyntaxHighlighter style={vscDarkPlus} language={lab.language} customStyle={{ borderRadius: '0.75rem', fontSize: '0.82rem', margin: 0, maxHeight: '50vh', overflowY: 'auto' }}>
             {currentContent}
@@ -401,7 +427,7 @@ function CodingLabView({
       <ContentNotes contextId={contextId} contentType="lab" />
       <div className="modal-actions">
         <button className="btn btn-ghost" onClick={onBack}>? Back to Lesson</button>
-        <button id="complete-lab-btn" className="btn btn-success btn-3d" onClick={onComplete}>? Mark Lab Complete</button>
+        {!executable && <button id="complete-lab-btn" className="btn btn-success btn-3d" onClick={onComplete}>Mark Lab Complete</button>}
       </div>
     </div>
   );
@@ -554,10 +580,12 @@ export default function SessionModal({
     geminiApiKey,
     selectedModel,
     language,
+    studyPoints,
     completedLabs,
     nodeDepths,
     addXp,
     addStudyPoints,
+    spendCoins,
     loseLife,
     gainLife,
     completeDepth,
@@ -590,6 +618,8 @@ export default function SessionModal({
   });
   const [victory, setVictory] = useState<VictoryData | null>(null);
   const [labCompletedThisRun, setLabCompletedThisRun] = useState(false);
+  const [hintUsed, setHintUsed] = useState(false);
+  const [hintVisible, setHintVisible] = useState(false);
   const [timeLeft, setTimeLeft] = useState(QUIZ_TIME_LIMIT_SECONDS);
   const [actionBusy, setActionBusy] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -756,13 +786,13 @@ export default function SessionModal({
       spGained = 15;
     }
 
-    const xpResult = addXp(xpGained);
-    addStudyPoints(spGained);
-
     let nodeResult: CompleteNodeResult | null = null;
     if (!practiceMode && !recoveryMode && nodeId && !isReplay && !alreadyCompleted) {
       nodeResult = completeDepth(nodeId, depth);
     }
+
+    const xpResult = addXp(xpGained);
+    addStudyPoints(spGained);
 
     const lifeRecovered = recoveryMode && perfect;
     if (lifeRecovered) {
@@ -831,6 +861,7 @@ export default function SessionModal({
       const isLast = quizState.index >= total - 1;
 
       if (!isLast) {
+        setHintVisible(false);
         setQuizState((current) => ({
           ...current,
           index: current.index + 1,
@@ -882,6 +913,22 @@ export default function SessionModal({
       setActionBusy(false);
     }
   }, [session, quizState.index, quizState.correctCount, depth, practiceMode, recoveryMode, mode, finalizeFailure, dailyChallengeMode, onDailyChallengePassed, onDailyChallengeFinished, nodeId, applyRewards, onReviewComplete, recordSessionEvent]);
+
+  const handleHint = useCallback(() => {
+    if (hintUsed || quizState.answered !== 'wrong' || !spendCoins(COMPANION_HINT_COST)) return;
+    setHintUsed(true);
+    setHintVisible(true);
+  }, [hintUsed, quizState.answered, spendCoins]);
+
+  const handleRetryQuestion = useCallback(() => {
+    setQuizState((current) => ({
+      ...current,
+      selected: null,
+      answered: 'idle',
+      questionStartedAt: Date.now(),
+    }));
+    setTimeLeft(QUIZ_TIME_LIMIT_SECONDS);
+  }, []);
 
   const handleLabComplete = useCallback(() => {
     setLabCompletedThisRun(true);
@@ -961,6 +1008,10 @@ export default function SessionModal({
               onSelect={handleSelect}
               onCheck={() => void handleCheck(false)}
               onContinue={() => void handleContinue()}
+              onRetryQuestion={handleRetryQuestion}
+              hintVisible={hintVisible}
+              canUseHint={!hintUsed && studyPoints >= COMPANION_HINT_COST}
+              onHint={handleHint}
             />
           )}
 
@@ -973,6 +1024,18 @@ export default function SessionModal({
               language={language}
               onComplete={handleLabComplete}
               onBack={() => setView('lesson')}
+              onAttempt={(passed, total) => {
+                void recordStudyEvent({
+                  eventKey: `${eventKeyRef.current}:lab-attempt:${Date.now()}`,
+                  eventType: 'coding_lab',
+                  nodeId,
+                  pathId: pathId || node?.pathId,
+                  depth,
+                  outcome: passed === total && total > 0 ? 'passed' : 'failed',
+                  activeSeconds: trackerRef.current?.seconds() ?? 0,
+                  metadata: { passed, total },
+                });
+              }}
             />
           )}
 

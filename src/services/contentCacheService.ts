@@ -3,7 +3,7 @@ import { getOfflineContent, saveOfflineContent } from '@/services/offlineStorage
 
 type ContentType = 'lesson' | 'lab' | 'master' | 'flashcards' | 'review' | 'daily-challenge' | 'assessment';
 type NodeDepthCache = 0 | 1 | 2 | 3;
-const CACHE_SCHEMA_VERSION = 2;
+const CACHE_SCHEMA_VERSION = 3;
 
 function cacheKey(nodeId: string, depth: NodeDepthCache, contentType: ContentType, model: string) {
   return `${CACHE_SCHEMA_VERSION}:${nodeId}:${depth}:${contentType}:${model}`;

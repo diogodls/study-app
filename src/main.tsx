@@ -7,9 +7,12 @@ import './index.css'
 import App from './App.tsx'
 import { applyTheme } from '@/services/themeService'
 
-const storedState = localStorage.getItem('devquest_state_v2');
-const storedTheme = storedState ? JSON.parse(storedState).theme ?? 'system' : 'system';
-applyTheme(storedTheme);
+try {
+  const storedState = localStorage.getItem('devquest_state_v2');
+  applyTheme(storedState ? JSON.parse(storedState).theme ?? 'system' : 'system');
+} catch {
+  applyTheme('system');
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

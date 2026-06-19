@@ -37,6 +37,14 @@ export async function syncOfflineQueue(): Promise<{ synced: number; failed: numb
       break;
     }
   }
+  if (synced > 0) {
+    const { data: progress } = await supabase
+      .from('user_progress')
+      .select('streak,longest_streak,last_study_date')
+      .eq('user_id', data.user.id)
+      .maybeSingle();
+    window.dispatchEvent(new CustomEvent('devquest-cloud-refreshed', { detail: progress ?? {} }));
+  }
   window.dispatchEvent(new CustomEvent('devquest-offline-queue'));
   return { synced, failed };
 }

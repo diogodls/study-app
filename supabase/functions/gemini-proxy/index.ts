@@ -43,14 +43,15 @@ Schema:
 {
   "title": "max 60 chars",
   "cheatSheet": "rich markdown lesson (900-1400 words) with sections: ## Concept, ## How It Works, ## Code Examples, ## Common Mistakes, ## Quick Reference",
-  "quizzes": [{ "question": "...", "codeSnippet": "optional", "options": ["A","B","C","D"], "correctIndex": 0, "explanation": "..." }]
+  "quizzes": [{ "question": "...", "codeSnippet": "optional", "options": ["A","B","C","D"], "correctIndex": 0, "explanation": "...", "hint": "short conceptual hint without revealing the answer" }]
 }
 Rules:
 - exactly 5 quizzes
 - at least 2 quizzes with codeSnippet
 - no trivial recall questions
 - quizzes should be approachable but still practical
-- explanations must explain why correct and why wrong options are wrong`;
+- explanations must explain why correct and why wrong options are wrong
+- every quiz must include a useful hint that does not reveal or eliminate the answer`;
   }
 
   return `You are DevQuest AI, an expert computer science tutor for working developers. ${languageLine}
@@ -60,14 +61,15 @@ Schema:
 {
   "title": "max 60 chars",
   "cheatSheet": "comprehensive markdown lesson (1200-2000 words) with sections: ## Concept, ## How It Works, ## Code Examples, ## Common Mistakes, ## When To Use / When Not To Use, ## Quick Reference",
-  "quizzes": [{ "question": "...", "codeSnippet": "optional", "options": ["A","B","C","D"], "correctIndex": 0, "explanation": "..." }]
+  "quizzes": [{ "question": "...", "codeSnippet": "optional", "options": ["A","B","C","D"], "correctIndex": 0, "explanation": "...", "hint": "short conceptual hint without revealing the answer" }]
 }
 Rules:
 - exactly 5 quizzes
 - at least 3 quizzes with codeSnippet
 - vary question types: analysis, comparison, debugging, application, tradeoff
 - never ask simple definition recall
-- explanations must explain why correct and why wrong options are wrong`;
+- explanations must explain why correct and why wrong options are wrong
+- every quiz must include a useful hint that does not reveal or eliminate the answer`;
 }
 
 function labPrompt(topic: string, language: Language) {
@@ -77,15 +79,22 @@ Schema:
 {
   "instructions": "markdown lab guide (250-500 words)",
   "boilerplateCode": "starter code",
-  "testCode": "self-contained tests",
+  "testCode": "Jest tests importing the solution file when runnerMode is sandpack; otherwise a verification script or checklist",
   "fileName": "solution.js",
-  "language": "javascript"
+  "language": "javascript | typescript | python | shell | yaml",
+  "runnerMode": "sandpack | manual",
+  "entryFile": "solution.js",
+  "testFile": "solution.test.js"
 }
 Rules:
 - lab completable in 15-30 minutes
 - include objective, requirements, hints, expected output
-- boilerplate must run as-is
-- include at least 3 tests`;
+- choose the natural language for the topic
+- use runnerMode sandpack only for JavaScript or TypeScript
+- JavaScript/TypeScript testCode must use Jest and import ./solution
+- never place the expected implementation inside testCode
+- boilerplate must parse and run as-is
+- include at least 3 independently named tests`;
 }
 
 function practicePrompt(topic: string, language: Language) {
@@ -95,12 +104,13 @@ Schema:
 {
   "title": "session title",
   "cheatSheet": "focused markdown summary (500-800 words)",
-  "quizzes": [{ "question": "...", "codeSnippet": "optional", "options": ["A","B","C","D"], "correctIndex": 0, "explanation": "..." }]
+  "quizzes": [{ "question": "...", "codeSnippet": "optional", "options": ["A","B","C","D"], "correctIndex": 0, "explanation": "...", "hint": "short conceptual hint without revealing the answer" }]
 }
 Rules:
 - exactly 3 quizzes
 - at least 2 quizzes with codeSnippet
-- no simple recall questions`;
+- no simple recall questions
+- every quiz must include a useful hint that does not reveal or eliminate the answer`;
 }
 
 function dailyChallengePrompt(topic: string, language: Language) {
@@ -110,14 +120,15 @@ Schema:
 {
   "title": "short daily challenge title",
   "cheatSheet": "concise markdown refresher (250-400 words)",
-  "quizzes": [{ "question": "...", "codeSnippet": "optional", "options": ["A","B","C","D"], "correctIndex": 0, "explanation": "..." }]
+  "quizzes": [{ "question": "...", "codeSnippet": "optional", "options": ["A","B","C","D"], "correctIndex": 0, "explanation": "...", "hint": "short conceptual hint without revealing the answer" }]
 }
 Rules:
 - exactly 5 quizzes
 - at least 3 quizzes with codeSnippet
 - mix debugging, code output, application, and tradeoff questions
 - avoid simple definition recall
-- explanations must be concise and useful`;
+- explanations must be concise and useful
+- every quiz must include a useful hint that does not reveal or eliminate the answer`;
 }
 
 function assessmentPrompt(topic: string, language: Language) {
@@ -127,14 +138,15 @@ Schema:
 {
   "title": "Skill Assessment",
   "cheatSheet": "one short paragraph explaining that this is a placement test",
-  "quizzes": [{ "question": "...", "codeSnippet": "optional", "options": ["A","B","C","D"], "correctIndex": 0, "explanation": "..." }]
+  "quizzes": [{ "question": "...", "codeSnippet": "optional", "options": ["A","B","C","D"], "correctIndex": 0, "explanation": "...", "hint": "short conceptual hint without revealing the answer" }]
 }
 Rules:
 - exactly 5 practical questions
 - collectively cover all three supplied nodes
 - at least 3 questions must use code, commands, configuration, or concrete scenarios
 - difficulty should verify working knowledge, not obscure trivia
-- explanations must teach why the answer is correct`;
+- explanations must teach why the answer is correct
+- every quiz must include a useful hint that does not reveal or eliminate the answer`;
 }
 
 function masterPrompt(topic: string, language: Language) {
@@ -144,13 +156,14 @@ Schema:
 {
   "title": "challenge title",
   "cheatSheet": "brief markdown refresher (250-450 words)",
-  "quizzes": [{ "question": "...", "codeSnippet": "required", "options": ["A","B","C","D"], "correctIndex": 0, "explanation": "..." }]
+  "quizzes": [{ "question": "...", "codeSnippet": "required", "options": ["A","B","C","D"], "correctIndex": 0, "explanation": "...", "hint": "short conceptual hint without revealing the answer" }]
 }
 Rules:
 - exactly 10 quizzes
 - every quiz must include codeSnippet
 - difficulty: senior developer practical scenarios
-- favor debugging, edge cases, tricky behavior, and tradeoffs`;
+- favor debugging, edge cases, tricky behavior, and tradeoffs
+- every quiz must include a useful hint that does not reveal or eliminate the answer`;
 }
 
 function flashcardsPrompt(topic: string, language: Language) {

@@ -514,6 +514,20 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   }, [state.theme]);
 
   useEffect(() => {
+    const handleCloudRefresh = (event: Event) => {
+      const detail = (event as CustomEvent<{ streak?: number; longest_streak?: number; last_study_date?: string }>).detail;
+      setState((current) => ({
+        ...current,
+        streak: detail.streak ?? current.streak,
+        longestStreak: detail.longest_streak ?? current.longestStreak,
+        lastStudyDate: detail.last_study_date ?? current.lastStudyDate,
+      }));
+    };
+    window.addEventListener('devquest-cloud-refreshed', handleCloudRefresh);
+    return () => window.removeEventListener('devquest-cloud-refreshed', handleCloudRefresh);
+  }, []);
+
+  useEffect(() => {
     const id = setInterval(() => {
       setState((current) => {
         if (current.lives >= MAX_LIVES) return current;

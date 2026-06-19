@@ -4047,6 +4047,59 @@ body.session-modal-open .app-header {
   color: var(--accent);
 }
 
+.companion-hint {
+  padding: 0.7rem;
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-sm);
+  background: var(--warning-bg);
+}
+
+.companion-hint p {
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.code-runner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.code-runner .sp-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: 420px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+}
+
+.code-runner .sp-stack {
+  min-width: 0;
+}
+
+.runner-result,
+.runner-offline {
+  padding: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+}
+
+.runner-result--pass {
+  border-color: var(--success);
+  background: var(--success-bg);
+  color: var(--success);
+  font-weight: 800;
+}
+
+@media (min-width: 850px) {
+  .code-runner .sp-layout {
+    grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+  }
+}
+
 @media (min-width: 700px) {
   .analytics-stats {
     grid-template-columns: repeat(5, minmax(0, 1fr));
