@@ -109,6 +109,7 @@ export type Companion = {
 
 export type GeminiModel = 'gemini-3-flash-preview' | 'gemini-2.5-flash' | 'gemini-2.5-pro';
 export type ContentLanguage = 'en' | 'pt-BR';
+export type ThemePreference = 'system' | 'dark' | 'light';
 export type NodeDepth = 0 | 1 | 2 | 3;
 export type NodeDepthMode = 'learn' | 'deepen' | 'master';
 export type SessionMode =
@@ -149,6 +150,9 @@ export type GameState = {
   studyReminderEnabled: boolean;
   studyReminderTime: string;
   studyReminderTimezone: string;
+  theme: ThemePreference;
+  roadmapGoalId: string | null;
+  roadmapPathIds: string[];
 
   // Character
   characterName: string;
@@ -190,4 +194,6 @@ export type OnboardingData = {
   startingPathId: string;
   companionSpecies?: import('@/config/character').CompanionSpecies;
   geminiApiKey?: string;
+  roadmapGoalId?: string | null;
+  roadmapPathIds?: string[];
 };

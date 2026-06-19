@@ -29,6 +29,8 @@ import { LEARNING_PATHS, getCompletedNodesFromDepths } from '@/config/paths';
 import { setSoundEnabled } from '@/services/soundService';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/services/supabaseClient';
+import { applyTheme } from '@/services/themeService';
+import { recordStudyDay } from '@/services/streakService';
 
 import type {
   GameState,
@@ -40,6 +42,7 @@ import type {
   EquippedItems,
   NodeDepth,
   ContentLanguage,
+  ThemePreference,
 } from '@/types';
 
 const STORAGE_KEY = 'devquest_state_v2';
@@ -85,6 +88,9 @@ const DEFAULT_STATE: GameState = {
   studyReminderEnabled: false,
   studyReminderTime: '19:00',
   studyReminderTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Sao_Paulo',
+  theme: 'system',
+  roadmapGoalId: null,
+  roadmapPathIds: [],
   characterName: '',
   avatarId: 'hooded-coder',
   avatarTier: 1,
@@ -96,16 +102,6 @@ const DEFAULT_STATE: GameState = {
   onboardingComplete: false,
   selectedPathId: LEARNING_PATHS[0].id,
 };
-
-function getTodayString(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function getYesterdayString(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().slice(0, 10);
-}
 
 function buildCompletedLabs(nodeDepthRows: NodeDepthRow[]): string[] {
   return nodeDepthRows.filter((row) => row.deepen_lab_completed).map((row) => row.node_id);
@@ -185,6 +181,9 @@ type UserProgressRow = {
   study_reminder_time: string | null;
   study_reminder_timezone: string | null;
   selected_path_id: string | null;
+  theme: ThemePreference | null;
+  roadmap_goal_id: string | null;
+  roadmap_path_ids: string[] | null;
 };
 
 type NodeDepthRow = {
@@ -225,6 +224,9 @@ async function saveCloudProgress(userId: string, state: GameState): Promise<void
     study_reminder_time: state.studyReminderTime,
     study_reminder_timezone: state.studyReminderTimezone,
     selected_path_id: state.selectedPathId,
+    theme: state.theme,
+    roadmap_goal_id: state.roadmapGoalId,
+    roadmap_path_ids: state.roadmapPathIds,
     updated_at: new Date().toISOString(),
   });
 }
@@ -346,6 +348,9 @@ async function loadCloudState(userId: string): Promise<GameState | null> {
     equippedCosmetic: progress.equipped_cosmetic,
     onboardingComplete: progress.onboarding_complete ?? DEFAULT_STATE.onboardingComplete,
     selectedPathId: progress.selected_path_id ?? DEFAULT_STATE.selectedPathId,
+    theme: progress.theme ?? DEFAULT_STATE.theme,
+    roadmapGoalId: progress.roadmap_goal_id,
+    roadmapPathIds: progress.roadmap_path_ids ?? [],
   });
 }
 
@@ -418,6 +423,8 @@ type GameContextValue = GameState & {
   applyTestedOutNodes: (nodeIds: string[]) => void;
   setSoundEnabledState: (enabled: boolean) => void;
   setStudyReminder: (enabled: boolean, time?: string) => void;
+  setTheme: (theme: ThemePreference) => void;
+  setRoadmap: (goalId: string | null, pathIds: string[]) => void;
   setAvatarId: (id: AvatarId) => void;
   setCharacterName: (name: string) => void;
   equipItem: (slot: GearSlot, itemId: string) => void;
@@ -495,6 +502,15 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setSoundEnabled(state.soundEnabled);
   }, [state.soundEnabled]);
+
+  useEffect(() => {
+    applyTheme(state.theme);
+    if (state.theme !== 'system') return;
+    const media = window.matchMedia('(prefers-color-scheme: light)');
+    const handleChange = () => applyTheme('system');
+    media.addEventListener('change', handleChange);
+    return () => media.removeEventListener('change', handleChange);
+  }, [state.theme]);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -608,20 +624,10 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
       return { newlyUnlockedBadges: [], newlyUnlockedGear: [], newlyUnlockedCosmetics: [], claimedMasterMilestone: null };
     }
 
-    const today = getTodayString();
-    const yesterday = getYesterdayString();
-    let newStreak = prev.streak;
-    if (prev.lastStudyDate !== today) {
-      newStreak = prev.lastStudyDate === yesterday ? prev.streak + 1 : 1;
-    }
-
     const nextNodeDepths = { ...prev.nodeDepths, [nodeId]: depth };
     let nextState = withDerivedProgress({
       ...prev,
       nodeDepths: nextNodeDepths,
-      streak: newStreak,
-      longestStreak: Math.max(prev.longestStreak, newStreak),
-      lastStudyDate: today,
     });
 
     const baseResult = buildCompleteResult(prev, nextState);
@@ -657,6 +663,18 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     const mergedState = withDerivedProgress({ ...nextState, unlockedGear: mergedGear });
 
     setState(mergedState);
+
+    if (user) {
+      void recordStudyDay(`depth:${nodeId}:${depth}:${Date.now()}`).then((streakResult) => {
+        if (!streakResult) return;
+        setState((current) => ({
+          ...current,
+          streak: streakResult.streak,
+          longestStreak: streakResult.longest_streak,
+          lastStudyDate: streakResult.last_study_date,
+        }));
+      }).catch((error) => console.warn('Unable to update streak:', error));
+    }
 
     if (user) {
       void supabase.from('user_node_depths').upsert({
@@ -784,6 +802,15 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const setTheme = useCallback((theme: ThemePreference) => {
+    applyTheme(theme);
+    setState((current) => ({ ...current, theme }));
+  }, []);
+
+  const setRoadmap = useCallback((goalId: string | null, pathIds: string[]) => {
+    setState((current) => ({ ...current, roadmapGoalId: goalId, roadmapPathIds: pathIds }));
+  }, []);
+
   const setAvatarId = useCallback((id: AvatarId) => {
     setState((current) => ({ ...current, avatarId: id }));
   }, []);
@@ -832,7 +859,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const completeOnboarding = useCallback((data: OnboardingData) => {
-    const { avatarId, characterName, startingPathId, companionSpecies } = data;
+    const { avatarId, characterName, startingPathId, companionSpecies, roadmapGoalId, roadmapPathIds } = data;
     setState((current) => ({
       ...current,
       avatarId,
@@ -841,6 +868,8 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
       geminiApiKey: '',
       onboardingComplete: true,
       selectedPathId: startingPathId,
+      roadmapGoalId: roadmapGoalId ?? null,
+      roadmapPathIds: roadmapPathIds ?? [],
       nodeDepths: {},
       completedNodes: [],
       completedLabs: [],
@@ -902,6 +931,8 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     applyTestedOutNodes,
     setSoundEnabledState,
     setStudyReminder,
+    setTheme,
+    setRoadmap,
     setAvatarId,
     setCharacterName,
     equipItem,

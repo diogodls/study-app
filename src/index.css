@@ -3884,6 +3884,30 @@ body.session-modal-open .app-header {
   font-size: 3rem;
 }
 
+.theme-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.theme-selector button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.75rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+}
+
+.theme-selector button.active {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+  color: var(--accent);
+}
+
 @media (min-width: 700px) {
   .analytics-stats {
     grid-template-columns: repeat(5, minmax(0, 1fr));

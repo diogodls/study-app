@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Bell, KeyRound, LogOut } from 'lucide-react';
+import { Bell, KeyRound, LogOut, Monitor, Moon, Sun } from 'lucide-react';
 import { useGameState } from '@/context/GameStateContext';
 import { useAuth } from '@/context/AuthContext';
 import type { GeminiModel, ContentLanguage } from '@/types';
@@ -16,12 +16,14 @@ export default function SettingsPage() {
     soundEnabled,
     studyReminderEnabled,
     studyReminderTime,
+    theme,
     streak,
     lastStudyDate,
     setModel,
     setLanguage,
     setSoundEnabledState,
     setStudyReminder,
+    setTheme,
     resetAll,
   } = useGameState();
   const { user, signOut, deleteGeminiKey } = useAuth();
@@ -90,6 +92,24 @@ export default function SettingsPage() {
       <h1 style={{ fontFamily: 'var(--font-heading)', marginBottom: '1.75rem', fontSize: '1.5rem' }}>
         Settings
       </h1>
+
+      <section className="card" style={{ marginBottom: '1rem' }}>
+        <h2 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '1rem' }}>
+          Appearance
+        </h2>
+        <div className="theme-selector">
+          {([
+            { id: 'system', label: 'System', icon: Monitor },
+            { id: 'dark', label: 'Dark', icon: Moon },
+            { id: 'light', label: 'Light', icon: Sun },
+          ] as const).map(({ id, label, icon: Icon }) => (
+            <button key={id} className={theme === id ? 'active' : ''} onClick={() => setTheme(id)}>
+              <Icon size={17} />
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
 
       <section className="card" style={{ marginBottom: '1rem' }}>
         <h2 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '1rem' }}>
