@@ -50,7 +50,12 @@ function NodeCard({
   testedOut: boolean;
   highlighted: boolean;
 }) {
-  const statusIcon = state === 'completed' ? '✅' : state === 'locked' ? '🔒' : '▶';
+  const statusIcon = state === 'completed' ? '✓' : state === 'locked' ? '🔒' : '▶';
+  const depthLabels = [
+    { value: 1, label: 'Learn', complexity: 'Foundation' },
+    { value: 2, label: 'Deepen', complexity: 'Advanced' },
+    { value: 3, label: 'Master', complexity: 'Expert' },
+  ];
 
   return (
     <div className="node-wrapper">
@@ -64,7 +69,6 @@ function NodeCard({
         className={`node-card node-card--${state}${highlighted ? ' node-card--highlighted' : ''}`}
         style={{ '--node-color': pathColor } as React.CSSProperties}
         onClick={onClick}
-        disabled={state === 'locked'}
         aria-label={`${node.title} — ${state}`}
       >
         <span className="node-card__icon" aria-hidden="true">{node.icon}</span>
@@ -73,9 +77,12 @@ function NodeCard({
           <span className="node-card__desc">{node.description}</span>
           <span className="node-card__time">~{node.estimatedMinutes} min</span>
           {testedOut && <span className="node-card__tested">Tested out</span>}
-          <span className="node-card__depth-dots" aria-label={`Depth ${depth} of 3`}>
-            {[1, 2, 3].map((value) => (
-              <span key={value} className={`node-card__depth-dot ${depth >= value ? 'node-card__depth-dot--on' : ''}`} />
+          <span className="node-card__complexities" aria-label={`Current complexity depth ${depth} of 3`}>
+            {depthLabels.map((option) => (
+              <span key={option.value} className={`node-card__complexity ${depth >= option.value ? 'node-card__complexity--done' : ''}`}>
+                <i aria-hidden="true" />
+                <span><strong>{option.label}</strong><small>{option.complexity}</small></span>
+              </span>
             ))}
           </span>
         </div>
@@ -223,9 +230,7 @@ export default function SkillTreePage() {
               index={idx}
               testedOut={testedOutNodes.includes(node.id)}
               highlighted={highlightedNodeId === node.id}
-              onClick={() => {
-                if (state !== 'locked') setActiveNodeId(node.id);
-              }}
+              onClick={() => setActiveNodeId(node.id)}
             />
           );
         })}
@@ -234,7 +239,11 @@ export default function SkillTreePage() {
       {/* ── Session modal ────────────────────────────────── */}
       {activeNodeId && (
         <NodeDepthModal
-          nodeTitle={path.nodes.find((node) => node.id === activeNodeId)?.title ?? 'Node'}
+          node={path.nodes.find((node) => node.id === activeNodeId)!}
+          nodeUnlocked={getNodeState(path.nodes.find((node) => node.id === activeNodeId)!) !== 'locked'}
+          lockedReason={`Complete Learn in ${path.nodes.find((node) => node.id === activeNodeId)?.prerequisiteIds
+            .map((id) => path.nodes.find((candidate) => candidate.id === id)?.title ?? id)
+            .join(', ')} first.`}
           currentDepth={nodeDepths[activeNodeId] ?? 0}
           completedLab={completedLabs.includes(activeNodeId)}
           onClose={() => setActiveNodeId(null)}

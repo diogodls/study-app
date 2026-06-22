@@ -3471,6 +3471,64 @@ body.session-modal-open .app-header {
   box-shadow: 0 0 8px var(--accent-glow);
 }
 
+.node-card__complexities {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.node-card__complexity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.3rem 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+}
+
+.node-card__complexity > i {
+  width: 0.42rem;
+  height: 0.42rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--border-accent);
+}
+
+.node-card__complexity > span,
+.node-card__complexity strong,
+.node-card__complexity small {
+  display: block;
+  min-width: 0;
+}
+
+.node-card__complexity strong {
+  font-size: 0.62rem;
+  line-height: 1.1;
+}
+
+.node-card__complexity small {
+  overflow: hidden;
+  margin-top: 0.08rem;
+  font-size: 0.52rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node-card__complexity--done {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  background: var(--accent-glow);
+  color: var(--accent);
+}
+
+.node-card__complexity--done > i {
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent-glow);
+}
+
 .depth-modal__body {
   display: flex;
   flex-direction: column;
@@ -3510,6 +3568,27 @@ body.session-modal-open .app-header {
 .depth-card__lab {
   font-size: 0.85rem;
   color: var(--text-muted);
+}
+
+.depth-card__header strong small {
+  margin-left: 0.35rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--radius-full);
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+}
+
+.depth-card__topic {
+  display: -webkit-box;
+  overflow: hidden;
+  padding: 0.65rem;
+  border-left: 3px solid var(--accent);
+  border-radius: 0.35rem;
+  background: var(--bg-secondary);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 
 .speed-quiz-timer {
