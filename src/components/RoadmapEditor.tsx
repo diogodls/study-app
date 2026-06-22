@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp } from 'lucide-react';
-import { LEARNING_PATHS } from '@/config/paths';
+import { getDisplayPathIcon, LEARNING_PATHS } from '@/config/paths';
 import { ROADMAP_PRESETS, getDefaultRoadmapPathIds, getRoadmapRole } from '@/config/roadmaps';
 import { useGameState } from '@/context/GameStateContext';
 
@@ -39,7 +39,7 @@ export default function RoadmapEditor() {
           return (
             <div key={path.id} className={enabled ? '' : 'disabled'}>
               <input type="checkbox" checked={enabled} onChange={() => toggle(path.id)} aria-label={`Include ${path.title}`} />
-              <span>{path.icon} {path.shortTitle}<small>{getRoadmapRole(roadmapGoalId, path.id)}</small></span>
+              <span>{getDisplayPathIcon(path.id)} {path.shortTitle}<small>{getRoadmapRole(roadmapGoalId, path.id)}</small></span>
               <button disabled={!enabled || position === 0} onClick={() => move(path.id, -1)}><ArrowUp size={15} /></button>
               <button disabled={!enabled || position === selectedIds.length - 1} onClick={() => move(path.id, 1)}><ArrowDown size={15} /></button>
             </div>

@@ -1,4 +1,4 @@
-import { getNode, getNodeTopic } from '@/config/paths';
+import { getDisplayNodeIcon, getNode, getNodeTopic } from '@/config/paths';
 import { supabase } from '@/services/supabaseClient';
 import type { NodeDepth, NodeDepthMode } from '@/types';
 
@@ -200,7 +200,7 @@ export async function getDueReviews(limit = 12): Promise<DueReview[]> {
       return {
         nodeId: schedule.node_id,
         title: node.title,
-        icon: node.icon,
+        icon: getDisplayNodeIcon(node),
         depth: schedule.depth ?? 1,
         easeFactor: Number(schedule.ease_factor),
         intervalDays: schedule.interval_days,

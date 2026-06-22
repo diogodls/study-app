@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Filter, Search, X } from 'lucide-react';
-import { LEARNING_PATHS, isNodeUnlocked } from '@/config/paths';
+import { LEARNING_PATHS, getDisplayNodeIcon, isNodeUnlocked } from '@/config/paths';
 import type { NodeDepth, PathCategory, SkillNode } from '@/types';
 
 type SearchResult = { node: SkillNode; pathId: string; pathTitle: string; status: string };
@@ -103,7 +103,7 @@ export default function GlobalNodeSearch({
               setQuery('');
               setFiltersOpen(false);
             }}>
-              <span>{result.node.icon}</span>
+              <span>{getDisplayNodeIcon(result.node)}</span>
               <span><strong>{result.node.title}</strong><small>{result.pathTitle} · {result.status} · {result.node.estimatedMinutes} min</small></span>
             </button>
           ))}

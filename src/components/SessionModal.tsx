@@ -5,7 +5,7 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import confetti from 'canvas-confetti';
 
 import { useGameState } from '@/context/GameStateContext';
-import { getNode, getNodeTopic } from '@/config/paths';
+import { getDisplayNodeIcon, getNode, getNodeTopic } from '@/config/paths';
 import { getCompanionSpeciesStageLabel, getCosmeticItem, getGearItem } from '@/config/character';
 import {
   generateLesson,
@@ -972,7 +972,7 @@ export default function SessionModal({
       <div className="modal">
         <div className="modal-header">
           <div className="modal-header__left">
-            {node && <span className="modal-node-icon">{node.icon}</span>}
+            {node && <span className="modal-node-icon">{getDisplayNodeIcon(node)}</span>}
             <div>
               <h2 className="modal-title">{session?.title ?? node?.title ?? 'Practice Session'}</h2>
               {node && <span className="modal-subtitle">~{node.estimatedMinutes} min · {mode}</span>}

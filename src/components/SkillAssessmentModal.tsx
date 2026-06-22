@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getAssessment, completeAssessment } from '@/services/assessmentService';
 import { createActiveTimeTracker, recordStudyEvent } from '@/services/analyticsService';
 import { useGameState } from '@/context/GameStateContext';
+import { getDisplayPathIcon } from '@/config/paths';
 import type { LearningPath, CheatSheetSession } from '@/types';
 import GeminiLoadingState from '@/components/GeminiLoadingState';
 import GeminiErrorCard from '@/components/GeminiErrorCard';
@@ -68,7 +69,7 @@ export default function SkillAssessmentModal({
     <div className="modal-overlay" role="dialog" aria-modal="true">
       <div className="modal assessment-modal">
         <div className="modal-header">
-          <div><h2 className="modal-title">{path.icon} {path.title}</h2><span className="modal-subtitle">5-question level assessment · no lives or rewards</span></div>
+          <div><h2 className="modal-title">{getDisplayPathIcon(path.id)} {path.title}</h2><span className="modal-subtitle">5-question level assessment · no lives or rewards</span></div>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
         <div className="modal-body">

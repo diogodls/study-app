@@ -1046,3 +1046,29 @@ export function isNodeUnlocked(node: SkillNode, completedNodes: string[]): boole
 export function getTotalNodeCount(): number {
   return LEARNING_PATHS.reduce((acc, p) => acc + p.nodes.length, 0);
 }
+
+const SAFE_PATH_ICONS: Record<string, string> = {
+  'data-structures': '\u{1F333}',
+  aws: '\u2601\uFE0F',
+  backend: '\u2699\uFE0F',
+  'system-design': '\u{1F3D7}\uFE0F',
+  testing: '\u{1F9EA}',
+  performance: '\u{1F680}',
+  'frontend-rendering': '\u{1F5A5}\uFE0F',
+  git: '\u{1F33F}',
+  linux: '\u{1F427}',
+  networking: '\u{1F310}',
+  appsec: '\u{1F6E1}\uFE0F',
+  devops: '\u{1F6A2}',
+  'typescript-advanced': '\u{1F537}',
+  'applied-ai': '\u{1F916}',
+  'design-patterns': '\u{1F9E9}',
+};
+
+export function getDisplayPathIcon(pathId: string): string {
+  return SAFE_PATH_ICONS[pathId] ?? '\u{1F4DA}';
+}
+
+export function getDisplayNodeIcon(node: SkillNode): string {
+  return node.capstone ? '\u{1F3C6}' : getDisplayPathIcon(node.pathId);
+}

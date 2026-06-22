@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useGameState } from '@/context/GameStateContext';
-import { LEARNING_PATHS, isNodeUnlocked } from '@/config/paths';
+import { LEARNING_PATHS, getDisplayNodeIcon, getDisplayPathIcon, isNodeUnlocked } from '@/config/paths';
 import type { SkillNode, NodeDepth, SessionMode } from '@/types';
 import SessionModal from '@/components/SessionModal';
 import NodeDepthModal from '@/components/NodeDepthModal';
@@ -71,7 +71,7 @@ function NodeCard({
         onClick={onClick}
         aria-label={`${node.title} — ${state}`}
       >
-        <span className="node-card__icon" aria-hidden="true">{node.icon}</span>
+        <span className="node-card__icon" aria-hidden="true">{getDisplayNodeIcon(node)}</span>
         <div className="node-card__body">
           <span className="node-card__title">{node.title}</span>
           <span className="node-card__desc">{node.description}</span>
@@ -203,7 +203,7 @@ export default function SkillTreePage() {
         className="path-header"
         style={{ '--path-color': path.color } as React.CSSProperties}
       >
-        <div className="path-header__icon">{path.icon}</div>
+        <div className="path-header__icon">{getDisplayPathIcon(path.id)}</div>
         <div className="path-header__info">
           <h1 className="path-header__title">{path.title}</h1>
           <p className="path-header__desc">{path.description}</p>

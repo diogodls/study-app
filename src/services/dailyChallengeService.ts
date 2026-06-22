@@ -1,4 +1,4 @@
-import { LEARNING_PATHS, getNode, getPath } from '@/config/paths';
+import { LEARNING_PATHS, getDisplayNodeIcon, getNode, getPath } from '@/config/paths';
 import { supabase } from '@/services/supabaseClient';
 import type { NodeDepth } from '@/types';
 
@@ -72,7 +72,7 @@ function mapChallenge(row: ChallengeRow): DailyChallenge {
     date: row.challenge_date,
     nodeId: row.node_id,
     title: node?.title ?? 'Daily Challenge',
-    icon: node?.icon ?? '⚔️',
+    icon: node ? getDisplayNodeIcon(node) : '\u2694\uFE0F',
     depth: Math.min(3, Math.max(1, row.depth)) as NodeDepth,
     attempts: row.attempts,
     completed: Boolean(row.completed_at),

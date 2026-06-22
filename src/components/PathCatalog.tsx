@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { LearningPath, PathCategory, NodeDepth } from '@/types';
 import { getRoadmapRole } from '@/config/roadmaps';
+import { getDisplayPathIcon } from '@/config/paths';
 
 const CATEGORY_ORDER: PathCategory[] = ['Foundations', 'Development', 'Infrastructure', 'Architecture', 'Specializations'];
 
@@ -30,7 +31,7 @@ export default function PathCatalog({
   return (
     <section className="path-catalog">
       <button className="path-catalog__trigger" onClick={() => setOpen((current) => !current)} aria-expanded={open}>
-        <span className="path-catalog__trigger-icon">{selectedPath.icon}</span>
+        <span className="path-catalog__trigger-icon">{getDisplayPathIcon(selectedPath.id)}</span>
         <span>
           <small>Current path</small>
           <strong>{selectedPath.title}</strong>
@@ -61,7 +62,7 @@ export default function PathCatalog({
                         setOpen(false);
                       }}
                     >
-                      <span className="path-catalog__card-icon">{path.icon}</span>
+                      <span className="path-catalog__card-icon">{getDisplayPathIcon(path.id)}</span>
                       <span className="path-catalog__card-body">
                         <strong>{path.title}</strong>
                         {roadmapGoalId && <span className={`roadmap-role roadmap-role--${getRoadmapRole(roadmapGoalId, path.id)}`}>{getRoadmapRole(roadmapGoalId, path.id)}</span>}

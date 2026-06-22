@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LEARNING_PATHS, getNode, isNodeUnlocked } from '@/config/paths';
+import { LEARNING_PATHS, getDisplayNodeIcon, getDisplayPathIcon, getNode, isNodeUnlocked } from '@/config/paths';
 import { getAnalyticsData } from '@/services/analyticsService';
 import { getDueReviews } from '@/services/srsService';
 import { getOrCreateDailyChallenge } from '@/services/dailyChallengeService';
@@ -105,7 +105,7 @@ export default function ProfileAnalytics() {
             return (
               <div key={item.pathId}>
                 <div>
-                  <strong>#{index + 1} {path.icon} {path.shortTitle}</strong>
+                  <strong>#{index + 1} {getDisplayPathIcon(path.id)} {path.shortTitle}</strong>
                   <span>{item.masteryPercent}% mastery · {item.accuracy ?? '—'}% accuracy · {formatTime(item.activeSeconds)}</span>
                 </div>
                 <div className="analytics-bar"><span style={{ width: `${item.masteryPercent}%`, background: path.color }} /></div>
@@ -117,7 +117,10 @@ export default function ProfileAnalytics() {
       <section className="card analytics-section">
         <h2>Weak topics</h2>
         {data.weakTopics.length
-          ? data.weakTopics.map((topic) => <button key={topic.nodeId} className="weak-topic" onClick={() => navigate('/', { state: { focusNodeId: topic.nodeId } })}><span>{getNode(topic.nodeId)?.icon} {topic.title}</span><strong>{topic.accuracy}%</strong></button>)
+          ? data.weakTopics.map((topic) => {
+            const node = getNode(topic.nodeId);
+            return <button key={topic.nodeId} className="weak-topic" onClick={() => navigate('/', { state: { focusNodeId: topic.nodeId } })}><span>{node ? getDisplayNodeIcon(node) : ''} {topic.title}</span><strong>{topic.accuracy}%</strong></button>;
+          })
           : <p className="analytics-empty">Answer at least three questions on a topic to identify weak areas.</p>}
       </section>
       <section className="card analytics-section">

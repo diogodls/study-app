@@ -10,7 +10,7 @@ import { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameState } from '@/context/GameStateContext';
 import { AVATARS, COMPANIONS } from '@/config/character';
-import { LEARNING_PATHS } from '@/config/paths';
+import { LEARNING_PATHS, getDisplayPathIcon } from '@/config/paths';
 import { generateLesson } from '@/services/geminiService';
 import type { AvatarId, CompanionSpecies } from '@/types';
 import { AvatarSprite, CompanionDisplay } from '@/components/PixelSprites';
@@ -349,7 +349,7 @@ function StepPath({
             style={{ '--path-color': path.color } as React.CSSProperties}
             onClick={() => onSelect(path.id)}
           >
-            <span className="path-select-card__icon">{path.icon}</span>
+            <span className="path-select-card__icon">{getDisplayPathIcon(path.id)}</span>
             <div className="path-select-card__body">
               <span className="path-select-card__title">{path.title}</span>
               <span className="path-select-card__desc">{path.description}</span>
