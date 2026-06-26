@@ -30,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [keyLoading, setKeyLoading] = useState(true);
   const [hasGeminiKey, setHasGeminiKey] = useState(false);
+  const userId = session?.user.id ?? null;
 
   useEffect(() => {
     let mounted = true;
@@ -52,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshKeyStatus = useCallback(async () => {
-    if (!session) {
+    if (!userId) {
       setHasGeminiKey(false);
       setKeyLoading(false);
       return;
@@ -63,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     setHasGeminiKey(!error && Boolean(data?.hasKey));
     setKeyLoading(false);
-  }, [session]);
+  }, [userId]);
 
   useEffect(() => {
     void refreshKeyStatus();

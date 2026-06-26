@@ -443,6 +443,7 @@ const GameStateContext = createContext<GameContextValue | null>(null);
 
 export function GameStateProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const userId = user?.id ?? null;
   const [state, setState] = useState<GameState>(loadLocalState());
   const [cloudLoading, setCloudLoading] = useState(true);
   const cloudLoadedRef = useRef(false);
@@ -453,7 +454,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     cloudLoadedRef.current = false;
 
-    if (!user) {
+    if (!userId) {
       const local = loadLocalState();
       setState(local);
       setCloudLoading(false);
@@ -461,7 +462,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     }
 
     setCloudLoading(true);
-    loadCloudState(user.id)
+    loadCloudState(userId)
       .then(async (cloudState) => {
         if (cancelled) return;
         if (cloudState) {
@@ -469,7 +470,7 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
         } else {
           const localState = withDerivedProgress({ ...loadLocalState(), geminiApiKey: '' });
           setState(localState);
-          await saveCloudSnapshot(user.id, localState);
+          await saveCloudSnapshot(userId, localState);
           localStorage.removeItem(STORAGE_KEY);
         }
         cloudLoadedRef.current = true;
@@ -485,32 +486,32 @@ export function GameStateProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
     saveLocalState(state);
   }, [state]);
 
   useEffect(() => {
-    if (!user || !cloudLoadedRef.current || cloudLoading || !navigator.onLine) return;
+    if (!userId || !cloudLoadedRef.current || cloudLoading || !navigator.onLine) return;
     const timeoutId = window.setTimeout(() => {
-      saveCloudProgress(user.id, state).catch((error) => {
+      saveCloudProgress(userId, state).catch((error) => {
         console.error('Failed to save cloud progress', error);
       });
     }, 500);
     return () => window.clearTimeout(timeoutId);
-  }, [state, user, cloudLoading]);
+  }, [state, userId, cloudLoading]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     const syncAndPersist = async () => {
       if (!navigator.onLine || !cloudLoadedRef.current) return;
       await syncOfflineQueue();
-      await saveCloudProgress(user.id, stateRef.current);
+      await saveCloudProgress(userId, stateRef.current);
     };
     window.addEventListener('online', syncAndPersist);
     return () => window.removeEventListener('online', syncAndPersist);
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
     setSoundEnabled(state.soundEnabled);

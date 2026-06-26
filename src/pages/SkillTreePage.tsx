@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useGameState } from '@/context/GameStateContext';
-import { LEARNING_PATHS, getDisplayNodeIcon, getDisplayPathIcon, isNodeUnlocked } from '@/config/paths';
+import { LEARNING_PATHS, getDisplayPathIcon, isNodeUnlocked } from '@/config/paths';
 import type { SkillNode, NodeDepth, SessionMode } from '@/types';
 import SessionModal from '@/components/SessionModal';
 import NodeDepthModal from '@/components/NodeDepthModal';
@@ -50,12 +50,8 @@ function NodeCard({
   testedOut: boolean;
   highlighted: boolean;
 }) {
-  const statusIcon = state === 'completed' ? '✓' : state === 'locked' ? '🔒' : '▶';
-  const depthLabels = [
-    { value: 1, label: 'Learn', complexity: 'Foundation' },
-    { value: 2, label: 'Deepen', complexity: 'Advanced' },
-    { value: 3, label: 'Master', complexity: 'Expert' },
-  ];
+  const statusIcon = state === 'completed' ? '\u2713' : state === 'locked' ? '\uD83D\uDD12' : '\u25B6';
+  const progressPct = Math.round((depth / 3) * 100);
 
   return (
     <div className="node-wrapper">
@@ -71,20 +67,18 @@ function NodeCard({
         onClick={onClick}
         aria-label={`${node.title} — ${state}`}
       >
-        <span className="node-card__icon" aria-hidden="true">{getDisplayNodeIcon(node)}</span>
+        <span
+          className="node-card__number"
+          style={{ '--node-progress': `${progressPct}%` } as React.CSSProperties}
+          aria-label={`Node ${index + 1}, ${progressPct}% mastered`}
+        >
+          <span>{index + 1}</span>
+        </span>
         <div className="node-card__body">
           <span className="node-card__title">{node.title}</span>
           <span className="node-card__desc">{node.description}</span>
           <span className="node-card__time">~{node.estimatedMinutes} min</span>
           {testedOut && <span className="node-card__tested">Tested out</span>}
-          <span className="node-card__complexities" aria-label={`Current complexity depth ${depth} of 3`}>
-            {depthLabels.map((option) => (
-              <span key={option.value} className={`node-card__complexity ${depth >= option.value ? 'node-card__complexity--done' : ''}`}>
-                <i aria-hidden="true" />
-                <span><strong>{option.label}</strong><small>{option.complexity}</small></span>
-              </span>
-            ))}
-          </span>
         </div>
         <span className="node-card__status" aria-hidden="true">{statusIcon}</span>
       </button>
