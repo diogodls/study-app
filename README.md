@@ -1,36 +1,41 @@
 # DevQuest
 
-DevQuest is a gamified study app for software engineering. It mixes structured learning paths, AI-generated lessons and coding labs, progression mechanics, and a mobile-first experience that runs on the web and on Android.
+DevQuest is a mobile-first, gamified learning app for software engineering. It combines structured roadmaps, AI-generated lessons, applied labs, personal analytics, rewards, streaks, companions, and Android packaging through Capacitor.
 
-The project was built in React/Vite and later packaged for Android with Capacitor. Today, Supabase powers authentication, cloud persistence, encrypted per-user Gemini keys, cached generated content, and lesson/lab notes.
+The app is built as a React/Vite web app and can run as a PWA or Android APK. Supabase powers authentication, cloud persistence, encrypted per-user Gemini keys, generated-content cache, notes, progress, SRS, analytics, and offline sync.
 
-## Highlights
+## Product Highlights
 
-- Learning paths for Data Structures, AWS, Backend, System Design, Testing, and Performance
-- AI-generated lessons, quizzes, coding labs, and free-topic practice sessions
-- XP, levels, streaks, lives, Study Points, rewards, companion and avatar progression
-- Default rewards plus custom rewards created by the user
-- Per-user notes attached to lessons and labs
-- PWA support and Android release build
+- 15 learning paths, including DSA, AWS, Backend, System Design, Git, Linux, Networking, Security, DevOps, Advanced TypeScript, AI Engineering, and Design Patterns.
+- Every node has 3 progression depths: `Learn`, `Deepen`, and `Master`.
+- AI-generated lessons, dense quizzes, coding labs, teach-back assessments, flashcards, reviews, and daily challenges.
+- Skill tree with path catalog, global search, level assessment, node progress indicators, and mastery badges.
+- Gamification with XP, Study Points, streaks, lives, rewards, avatar gear, cosmetics, and companion progression.
+- Personal analytics with next-best-action, weak topics, weekly performance, heatmap, and path leaderboard.
+- Offline support for recent sessions, queued progress sync, notes, manual labs, and cached content.
+- JavaScript/TypeScript lab runner via Sandpack for supported labs.
 
 ## Stack
 
-- Frontend: React 19, TypeScript, Vite
-- Routing: `HashRouter`
+- Frontend: React 19, TypeScript, Vite, React Router
+- Mobile/PWA: Capacitor, Android, Vite PWA
 - Backend: Supabase Auth, Postgres, Edge Functions
-- AI: Gemini behind `gemini-proxy`
+- AI: Gemini through authenticated `gemini-proxy`
+- Storage: Supabase + IndexedDB offline cache
+- Testing: Vitest, React Testing Library, Playwright
 - Hosting: Vercel
-- Mobile: Capacitor + Android
 
-## How it works
+## How It Works
 
-- Users sign in with email/password
-- Each user stores their own Gemini key through the authenticated backend flow
-- Supabase becomes the source of truth after login
-- Generated lessons and labs are cached per user
-- Notes are saved per user and per content item
+- Users sign in with email/password and save their own Gemini key.
+- The Gemini key is stored behind the backend flow, not directly in frontend state.
+- Supabase becomes the source of truth after login.
+- Generated content is cached by user, node, depth, model, and content type.
+- Progress is tracked by node depth: `0 | 1 | 2 | 3`.
+- `Learn` unlocks the next node; `Deepen` and `Master` improve mastery and rewards.
+- Notes, quiz results, study events, SRS reviews, assessments, and lab completions persist per user.
 
-## Local setup
+## Local Setup
 
 Create `.env.local`:
 
@@ -50,21 +55,22 @@ npm run dev
 Useful commands:
 
 ```bash
-npm run build
+npm run typecheck
 npm run lint
-npm run preview
+npm run test
+npm run build
 npm run android:sync
 npm run android:open
 ```
 
 ## Deploy
 
-Web deploy uses Vercel with:
+Vercel:
 
-- build command: `npm run build`
-- output directory: `dist`
+- Build command: `npm run build`
+- Output directory: `dist`
 
-Backend deploy uses Supabase:
+Supabase:
 
 ```bash
 supabase link --project-ref <project-ref>
@@ -74,7 +80,7 @@ supabase functions deploy gemini-proxy
 
 ## Android
 
-The Android project lives in `android/`, generated from the web app with Capacitor.
+The Android project lives in `android/` and is generated from the web app with Capacitor.
 
 Release APK output:
 
@@ -82,27 +88,26 @@ Release APK output:
 android/app/build/outputs/apk/release/app-release.apk
 ```
 
-## Important files
+Generate/update Android project:
 
-- [package.json](/C:/Users/didi/Desktop/projetos/study-app/package.json)
-- [vite.config.ts](/C:/Users/didi/Desktop/projetos/study-app/vite.config.ts)
-- [capacitor.config.ts](/C:/Users/didi/Desktop/projetos/study-app/capacitor.config.ts)
-- [src/context/GameStateContext.tsx](/C:/Users/didi/Desktop/projetos/study-app/src/context/GameStateContext.tsx)
-- [src/context/AuthContext.tsx](/C:/Users/didi/Desktop/projetos/study-app/src/context/AuthContext.tsx)
-- [src/components/SessionModal.tsx](/C:/Users/didi/Desktop/projetos/study-app/src/components/SessionModal.tsx)
-- [src/pages/SkillTreePage.tsx](/C:/Users/didi/Desktop/projetos/study-app/src/pages/SkillTreePage.tsx)
-- [src/pages/PracticePage.tsx](/C:/Users/didi/Desktop/projetos/study-app/src/pages/PracticePage.tsx)
-- [src/pages/ShopPage.tsx](/C:/Users/didi/Desktop/projetos/study-app/src/pages/ShopPage.tsx)
-- [supabase/functions/gemini-proxy/index.ts](/C:/Users/didi/Desktop/projetos/study-app/supabase/functions/gemini-proxy/index.ts)
+```bash
+npm run android:sync
+npm run android:open
+```
+
+## Key Files
+
+- `src/config/paths.ts` — learning paths, nodes, depth topics, validation
+- `src/config/expansionPaths.ts` — expanded professional tracks
+- `src/context/GameStateContext.tsx` — progress, rewards, sync, progression rules
+- `src/context/AuthContext.tsx` — auth and Gemini key status
+- `src/components/SessionModal.tsx` — Learn/Deepen/Master sessions
+- `src/pages/SkillTreePage.tsx` — path catalog, search, tree, assessment entry
+- `src/services/analyticsService.ts` — dashboard data and performance summaries
+- `src/services/offlineStorageService.ts` — IndexedDB offline cache and queue
+- `src/services/geminiService.ts` — frontend AI contract
+- `supabase/functions/gemini-proxy/index.ts` — secure Gemini proxy
 
 ## Status
 
-Implemented today:
-
-- onboarding and auth
-- cloud sync
-- per-user AI key flow
-- generated content cache
-- notes on lessons and labs
-- reward shop
-- Android packaging
+MVP is usable on web/PWA and Android. Current focus is product polish, content quality, UX improvements, and continued validation across mobile flows.
